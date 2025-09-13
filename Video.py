@@ -1,3 +1,5 @@
+# First install PYQT5 by this command from CMD As Administrator:
+# pip install PyQt5
 import sys
 import os
 import subprocess
@@ -225,7 +227,7 @@ class VideoCompressorApp(QWidget):
         self.speed_spinbox = QDoubleSpinBox()
         self.speed_spinbox.setRange(0.5, 2.0)
         self.speed_spinbox.setSingleStep(0.05)
-        self.speed_spinbox.setValue(1.25)
+        self.speed_spinbox.setValue(1.2)
         self.speed_spinbox.setSuffix("x")
         options_layout.addWidget(self.speed_spinbox)
         main_layout.addLayout(options_layout)
@@ -279,6 +281,13 @@ class VideoCompressorApp(QWidget):
         
         # Get video metadata using ffprobe
         self.get_video_info()
+    
+    def set_status_text_with_color(self, text, color="white"):
+        """
+        A helper function to update the status label with a specific color.
+        """
+        self.status_label.setStyleSheet(f"color: {color};")
+        self.status_label.setText(text)
 
     def get_video_info(self):
         """
@@ -288,25 +297,33 @@ class VideoCompressorApp(QWidget):
             self.show_message("Error", "No valid video file selected.")
             return
 
-        self.status_update_signal.emit("Analyzing video...")
+        self.set_status_text_with_color("Analyzing video...", "white")
         try:
             ffprobe_path = os.path.join(self.script_dir, 'ffprobe.exe')
             cmd = [
-                ffprobe_path, '-v', 'error', '-show_entries',
-                'format=duration:stream=width,height', '-of',
-                'json', self.input_file_path
+                ffprobe_path, '-v', 'error', '-select_streams', 'v:0',
+                '-show_entries', 'stream=width,height', '-of',
+                'csv=p=0:s=x', self.input_file_path
             ]
             result = subprocess.run(cmd, capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
-            video_info = json.loads(result.stdout)
+            self.original_resolution = result.stdout.strip()
+
+            # --- MODIFICATION START ---
+            # Check for supported resolutions
+            if self.original_resolution not in ["1920x1080", "2560x1440"]:
+                error_message = "This software is designed to work with HD or 1440p resolution only. Apologies!"
+                self.set_status_text_with_color(error_message, "red")
+                self.process_button.setEnabled(False) # Disable the button if resolution is unsupported
+                # We can also get the duration with another command, but let's keep it simple for now
+                self.duration_label.setText(f"Duration: N/A | Resolution: {self.original_resolution}")
+                return
+            # --- MODIFICATION END ---
             
-            # Extract duration
+            # Now get duration using a separate command
+            cmd_duration = [ffprobe_path, '-v', 'error', '-show_entries', 'format=duration', '-of', 'json', self.input_file_path]
+            result_duration = subprocess.run(cmd_duration, capture_output=True, text=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            video_info = json.loads(result_duration.stdout)
             self.original_duration = float(video_info['format']['duration'])
-            
-            # Extract resolution
-            for stream in video_info['streams']:
-                if stream.get('width') and stream.get('height'):
-                    self.original_resolution = f"{stream['width']}x{stream['height']}"
-                    break
             
             # Convert duration to minutes and seconds for the UI
             total_seconds = int(self.original_duration)
@@ -325,19 +342,22 @@ class VideoCompressorApp(QWidget):
             # Automatically set the end time to the full video duration
             self.end_minute_input.setValue(total_minutes)
             self.end_second_input.setValue(remaining_seconds)
-            self.status_update_signal.emit("Video analysis complete.")
+            self.set_status_text_with_color("Video analysis complete.", "white")
+            self.process_button.setEnabled(True)
 
         except FileNotFoundError:
             self.show_message("Error", "FFprobe not found. Please ensure FFmpeg is in the same folder as the application.")
-            self.status_update_signal.emit("Error: FFmpeg not found.")
+            self.set_status_text_with_color("Error: FFmpeg not found.", "red")
+            self.process_button.setEnabled(False)
         except subprocess.CalledProcessError as e:
-            # Capture and report the error from ffprobe's output
             error_message = e.stderr or e.stdout
             self.show_message("Error", f"Failed to analyze video with ffprobe: {error_message}")
-            self.status_update_signal.emit("Error during analysis.")
+            self.set_status_text_with_color("Error during analysis.", "red")
+            self.process_button.setEnabled(False)
         except (KeyError, json.JSONDecodeError):
             self.show_message("Error", "Could not parse video metadata. Is the file a valid video?")
-            self.status_update_signal.emit("Error: Invalid video file.")
+            self.set_status_text_with_color("Error: Invalid video file.", "red")
+            self.process_button.setEnabled(False)
 
     def start_processing(self):
         """
@@ -351,6 +371,13 @@ class VideoCompressorApp(QWidget):
             self.show_message("Error", "Please select a valid video file first.")
             return
 
+        # --- MODIFICATION START ---
+        # Stop processing if the resolution is not supported
+        if self.original_resolution not in ["1920x1080", "2560x1440"]:
+            self.set_status_text_with_color("This software is designed to work with HD or 1440p resolution only. Apologies!", "red")
+            return
+        # --- MODIFICATION END ---
+
         # Convert minute/second inputs to total seconds
         start_time = (self.start_minute_input.value() * 60) + self.start_second_input.value()
         end_time = (self.end_minute_input.value() * 60) + self.end_second_input.value()
@@ -363,7 +390,7 @@ class VideoCompressorApp(QWidget):
 
         self.is_processing = True
         self.process_button.setEnabled(False)
-        self.status_update_signal.emit("Processing video... Please wait.")
+        self.set_status_text_with_color("Processing video... Please wait.", "white")
         self.progress_update_signal.emit(0)
 
         # Run the processing in a separate process to avoid freezing the GUI
@@ -523,20 +550,39 @@ class ProcessThread(QThread):
         """
         The main processing logic that runs in the separate thread.
         """
+        # --- FIX START: Correcting for speed factor ---
+        # The start and end times from the UI are "displayed" times.
+        # We need to convert them to the original video's timeline for the trim.
+        if self.speed_factor != 1.0:
+            start_time_corrected = self.start_time / self.speed_factor
+            end_time_corrected = self.end_time / self.speed_factor
+            
+            # The duration must also be based on the corrected times for bitrate calculation.
+            duration_corrected = end_time_corrected - start_time_corrected
+            
+            self.status_signal.emit(f"Correcting trim times for speed factor {self.speed_factor}x.")
+            self.status_signal.emit(f"Original trim: {self.start_time:.2f}s to {self.end_time:.2f}s")
+            self.status_signal.emit(f"Corrected trim: {start_time_corrected:.2f}s to {end_time_corrected:.2f}s")
+        else:
+            start_time_corrected = self.start_time
+            end_time_corrected = self.end_time
+            duration_corrected = self.end_time - self.start_time
+        # --- FIX END ---
+        
         TARGET_MB = 50.0  # A good midpoint of the 40-64MB range
         AUDIO_KBPS = 128
 
         # Calculate the video bitrate
         try:
             target_file_size_bits = TARGET_MB * 8 * 1024 * 1024
-            audio_bits = AUDIO_KBPS * 1024 * self.duration
+            audio_bits = AUDIO_KBPS * 1024 * duration_corrected
             video_bits = target_file_size_bits - audio_bits
             
             if video_bits < 0:
                 self.finished_signal.emit(False, "Video duration is too short to meet the file size and audio bitrate requirements.")
                 return
 
-            video_bitrate_kbps = video_bits / (1024 * self.duration)
+            video_bitrate_kbps = video_bits / (1024 * duration_corrected)
         except ZeroDivisionError:
             self.finished_signal.emit(False, "Selected video duration is zero.")
             return
@@ -546,17 +592,28 @@ class ProcessThread(QThread):
         # Determine the video filter and flags based on the mobile format option
         video_filter_cmd = ""
         
-        # Build the video filter
+        # --- MODIFICATION START ---
+        # Select the correct health bar crop coordinates based on the resolution
+        healthbar_crop_string = ""
+        if self.original_resolution == "1920x1080":
+            # For HD resolution
+            healthbar_crop_string = "275:39:83:1005"
+        elif self.original_resolution == "2560x1440":
+            # For 1440p resolution, with scaled coordinates
+            healthbar_crop_string = "367:52:111:1340"
+        
+        # The logic for building the video filter is adjusted to use the new variable
         if self.is_mobile_format:
             # The complex filter splits the video stream, crops a health bar, pads the main video, and overlays the health bar
             video_filter_cmd = (
                 f"split[main][healthbar];"
                 f"[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];"
-                f"[healthbar]crop=275:39:83:1005,scale=1150:-1[healthbar_cropped];"
+                f"[healthbar]crop={healthbar_crop_string},scale=1150:-1[healthbar_cropped];"
                 f"[main_cropped]pad=1150:1920:0:40[padded_main];"
                 f"[padded_main][healthbar_cropped]overlay=0:0"
             )
             self.status_signal.emit("Optimizing for mobile: Applying complex video filter for split-screen and health bar overlay.")
+        # --- MODIFICATION END ---
         else:
             # Existing logic for standard landscape output
             original_width, original_height = map(int, self.original_resolution.split('x'))
@@ -570,7 +627,10 @@ class ProcessThread(QThread):
         if self.speed_factor != 1.0:
             speed_filter = f"setpts=PTS/{self.speed_factor}"
             # Prepend the speed filter to the video filter chain
-            video_filter_cmd = f"{speed_filter},{video_filter_cmd}"
+            if video_filter_cmd:
+                video_filter_cmd = f"{speed_filter},{video_filter_cmd}"
+            else:
+                video_filter_cmd = speed_filter
             self.status_signal.emit(f"Applying speed factor: {self.speed_factor}x to video.")
 
         # Build the audio filter command to match the video speed
@@ -601,7 +661,8 @@ class ProcessThread(QThread):
             ffmpeg_path, '-y',
             '-hwaccel', 'auto',
             '-i', self.input_path,
-            '-ss', str(self.start_time), '-to', str(self.end_time),
+            # Use the corrected times here
+            '-ss', str(start_time_corrected), '-to', str(end_time_corrected),
             '-c:v', 'h264_nvenc', '-b:v', f'{video_bitrate_kbps}k',
             '-pass', '1', '-an', '-f', 'mp4'
         ]
@@ -621,7 +682,8 @@ class ProcessThread(QThread):
             ffmpeg_path, '-y',
             '-hwaccel', 'auto',
             '-i', self.input_path,
-            '-ss', str(self.start_time), '-to', str(self.end_time),
+            # Use the corrected times here as well
+            '-ss', str(start_time_corrected), '-to', str(end_time_corrected),
             '-c:v', 'h264_nvenc', '-b:v', f'{video_bitrate_kbps}k',
             '-pass', '2',
             '-c:a', 'aac', '-b:a', f'{AUDIO_KBPS}k'

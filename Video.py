@@ -1,3 +1,5 @@
+# pip install PyQt5 python-vlc
+
 import tempfile
 import sys
 import os

@@ -11,7 +11,7 @@ import vlc
 from PyQt5.QtGui import QFont, QColor, QPalette, QPainter
 from PyQt5.QtWidgets import QSizePolicy
 from PyQt5.QtCore import Qt, pyqtSignal, QThread, QUrl, QTimer, QCoreApplication
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
+from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLabel, QPushButton, QProgressBar, QSpinBox, QMessageBox,
                              QFrame, QFileDialog, QCheckBox, QDoubleSpinBox, QSlider, QStyle, QStyleOptionSlider, QDialog)
 
@@ -34,7 +34,6 @@ class ConfigManager:
                 json.dump(config_data, f, indent=4)
         except Exception as e:
             print(f"Error saving config file: {e}")
-
 
 class TrimmedSlider(QSlider):
     def __init__(self, parent=None):
@@ -82,26 +81,19 @@ class TrimmedSlider(QSlider):
         if self.trimmed_start is not None and self.trimmed_end is not None:
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
-
             trim_out_color = QColor(200, 200, 200)
             painter.setPen(Qt.NoPen)
             painter.setBrush(trim_out_color)
-
             total_duration = self.maximum() - self.minimum()
             if total_duration > 0:
-                # trimmed_start/end stored in seconds, slider values are milliseconds in this app
                 start_x = self.map_value_to_pixel(int(self.trimmed_start * 1000))
                 end_x = self.map_value_to_pixel(int(self.trimmed_end * 1000))
-
                 if self.trimmed_start > 0:
                     painter.drawRect(0, 0, min(start_x, end_x), self.height())
-
                 if self.trimmed_end < self.maximum():
                     painter.drawRect(max(start_x, end_x), 0, self.width() - max(start_x, end_x), self.height())
-
-                trim_in_color = QColor(100, 200, 100, 150)  # semi-transparent green
+                trim_in_color = QColor(100, 200, 100, 150)
                 painter.setBrush(trim_in_color)
-
                 rect_x = min(start_x, end_x)
                 rect_width = abs(end_x - start_x)
                 painter.drawRect(rect_x, 0, rect_width, self.height())
@@ -115,9 +107,7 @@ class TrimmedSlider(QSlider):
         style_option.minimum = self.minimum()
         style_option.maximum = self.maximum()
         style_option.sliderPosition = value
-
         return style.sliderPositionFromValue(style_option.minimum, style_option.maximum, value, self.width())
-
 
 class VideoCompressorApp(QWidget):
     progress_update_signal = pyqtSignal(int)
@@ -136,18 +126,15 @@ class VideoCompressorApp(QWidget):
             os.path.abspath(__file__))
         self.config_manager = ConfigManager(os.path.join(self.script_dir, 'config.json'))
         self.last_dir = self.config_manager.config.get('last_directory', os.path.expanduser('~'))
-
         vlc_args = [
             '--no-xlib', '--no-video-title-show',
             '--no-plugins-cache', '--verbose=-1'
         ]
         self.vlc_instance = vlc.Instance(vlc_args)
         self.vlc_player = self.vlc_instance.media_player_new()
-
         self.timer = QTimer(self)
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.update_player_state)
-
         self.setWindowTitle("Fortnite Video Compressor")
         geom = self.config_manager.config.get('window_geometry')
         if geom and isinstance(geom, dict):
@@ -158,10 +145,8 @@ class VideoCompressorApp(QWidget):
             self.setGeometry(x, y, w, h)
         else:
             self.setGeometry(100, 100, 900, 700)
-
         self.set_style()
         self.init_ui()
-
         if file_path:
             self.handle_file_selection(file_path)
 
@@ -270,19 +255,11 @@ class VideoCompressorApp(QWidget):
         self.duration_label.setStyleSheet("color: lightgray; font-size: 13px; padding: 4px;")
         left_layout.addWidget(self.duration_label)
         process_controls = QHBoxLayout()
-
-        # Mobile checkbox aligned left
         self.mobile_checkbox = QCheckBox("Mobile Format (Portrait Video)")
         self.mobile_checkbox.setStyleSheet("font-size: 18px; font-weight: bold;")
         process_controls.addWidget(self.mobile_checkbox, alignment=Qt.AlignLeft)
-
-        # Add stretch before center group
         process_controls.addStretch(1)
-
-        # Center group in horizontal layout (side by side)
         center_group = QHBoxLayout()
-
-        # Bigger, pastel green Process Video button
         self.process_button = QPushButton("Process Video")
         self.process_button.setFixedSize(220, 60)  # wider & taller
         self.process_button.setStyleSheet("""
@@ -345,13 +322,10 @@ class VideoCompressorApp(QWidget):
         if self.vlc_player:
             current_time = self.vlc_player.get_time()
             if current_time >= 0:
-                # If user is currently dragging the slider we don't want to override their movement
                 if not getattr(self.positionSlider, "_is_pressed", False):
-                    # block signals to avoid triggering set_vlc_position while updating
                     self.positionSlider.blockSignals(True)
                     self.positionSlider.setValue(current_time)
                     self.positionSlider.blockSignals(False)
-
             if self.vlc_player.is_playing():
                 self.playPauseButton.setText("Pause")
                 self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
@@ -368,7 +342,6 @@ class VideoCompressorApp(QWidget):
             self.vlc_player.play()
             self.playPauseButton.setText("Pause")
             self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
-
         if not self.timer.isActive():
             self.timer.start(100)
 
@@ -396,6 +369,10 @@ class VideoCompressorApp(QWidget):
         self.trim_end = pos_s
         self._update_trim_widgets_from_trim_times()
         self.positionSlider.set_trim_times(self.trim_start, self.trim_end)
+        if self.vlc_player.is_playing():
+            self.vlc_player.pause()
+            self.playPauseButton.setText("Play")
+            self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def _update_trim_widgets_from_trim_times(self):
         if self.trim_start is not None:
@@ -419,7 +396,8 @@ class VideoCompressorApp(QWidget):
 
     def handle_file_selection(self, file_path):
         self.input_file_path = file_path
-        self.drop_label.setText(f"File selected: {os.path.basename(self.input_file_path)}")
+        self.drop_label.setWordWrap(True)
+        self.drop_label.setText(f"{os.path.basename(self.input_file_path)}")
         self.file_label.setText(f"File: {self.input_file_path}")
         dir_path = os.path.dirname(file_path)
         if os.path.isdir(dir_path):
@@ -427,7 +405,6 @@ class VideoCompressorApp(QWidget):
         cfg = dict(self.config_manager.config)
         cfg['last_directory'] = self.last_dir
         self.config_manager.save_config(cfg)
-
         media = self.vlc_instance.media_new(QUrl.fromLocalFile(self.input_file_path).toLocalFile())
         self.vlc_player.set_media(media)
         if sys.platform == 'win32':
@@ -436,7 +413,6 @@ class VideoCompressorApp(QWidget):
             self.vlc_player.set_nsobject(int(self.video_frame.winId()))
         else:
             self.vlc_player.set_xid(int(self.video_frame.winId()))
-
         self.vlc_player.play()
         time.sleep(0.5)
         video_duration_ms = self.vlc_player.get_length()
@@ -446,7 +422,6 @@ class VideoCompressorApp(QWidget):
             total_minutes = int(self.original_duration) // 60
             self.start_minute_input.setRange(0, total_minutes)
             self.end_minute_input.setRange(0, total_minutes)
-
         self.timer.start(100)
         self.get_video_info()
 
@@ -502,31 +477,25 @@ class VideoCompressorApp(QWidget):
         if self.is_processing:
             self.show_message("Info", "A video is already being processed. Please wait.")
             return
-
         if not self.input_file_path or not os.path.exists(self.input_file_path):
             self.show_message("Error", "Please select a valid video file first.")
             return
-
         if self.original_resolution not in ["1920x1080", "2560x1440"]:
             self.set_status_text_with_color(
                 "This software is designed to work with HD or 1440p resolution only. Apologies!", "red")
             return
-
         start_time = (self.start_minute_input.value() * 60) + self.start_second_input.value()
         end_time = (self.end_minute_input.value() * 60) + self.end_second_input.value()
         is_mobile_format = self.mobile_checkbox.isChecked()
         speed_factor = self.speed_spinbox.value()
-
         if start_time < 0 or end_time < 0 or start_time >= end_time or end_time > self.original_duration:
             self.show_message("Error",
                               "Invalid start and end times. Please ensure end time > start time and within video duration.")
             return
-
         self.is_processing = True
         self.process_button.setEnabled(False)
         self.set_status_text_with_color("Processing video... Please wait.", "white")
         self.progress_update_signal.emit(0)
-
         self.process_thread = ProcessThread(
             self.input_file_path,
             start_time,
@@ -541,8 +510,33 @@ class VideoCompressorApp(QWidget):
         )
         self.process_thread.finished_signal.connect(self.on_process_finished)
         self.process_thread.start()
+
+    def reset_app_state(self):
+        """Resets the UI and state so a new file can be loaded fresh."""
+        self.input_file_path = None
+        self.original_resolution = None
+        self.trim_start = 0.0
+        self.trim_end = 0.0
+        self.duration_label.setText("Duration: N/A | Resolution: N/A")
+        self.process_button.setEnabled(False)
+        self.progress_update_signal.emit(0)
+        self.set_status_text_with_color("Please upload a new video file.", "white")
+        try:
+            self.positionSlider.setRange(0, 0)
+            self.positionSlider.setValue(0)
+            self.positionSlider.set_trim_times(0, 0)
+        except AttributeError:
+            pass
+        self.file_label.setText("No file selected")
+        self.drop_label.setText("Drag & Drop\r\nVideo File Here:")
+    
+    def handle_new_file(self):
+        """Clear state and immediately open file picker."""
+        self.reset_app_state()
+        self.select_file()
+
     def on_process_finished(self, success, message):
-        button_size = (150, 35)
+        button_size = (185, 45)
         self.is_processing = False
         self.process_button.setEnabled(True)
         self.status_update_signal.emit("Ready to process another video.")
@@ -555,53 +549,37 @@ class VideoCompressorApp(QWidget):
             layout = QVBoxLayout(dialog)
             label = QLabel(f"File saved to:\n{message}")
             layout.addWidget(label)
-            button_layout = QVBoxLayout()
-            button_layout.setSpacing(40)
-            button_layout.setContentsMargins(30, 50, 30, 50)
-            row1 = QHBoxLayout()
-            whatsapp_button = QPushButton("Share via Whatsapp")
+            grid = QGridLayout()
+            grid.setSpacing(40)
+            grid.setContentsMargins(30, 50, 30, 50)
+            whatsapp_button = QPushButton("✆   Share via Whatsapp   ✆")
             whatsapp_button.setFixedSize(*button_size)
-            whatsapp_button.setStyleSheet("background-color: #25D366; color: white;")
-            whatsapp_button.clicked.connect(self.share_via_whatsapp)
-            row1.addWidget(whatsapp_button)
+            whatsapp_button.setStyleSheet("background-color: #328742; color: white;")
+            whatsapp_button.clicked.connect(lambda: (self.share_via_whatsapp(), QTimer.singleShot(200, QCoreApplication.instance().quit)))
             open_folder_button = QPushButton("Open Output Folder")
             open_folder_button.setFixedSize(*button_size)
-            open_folder_button.setStyleSheet("background-color: #3498db; color: white;")
-            open_folder_button.clicked.connect(lambda: self.open_folder(os.path.dirname(message)))
-            row1.addWidget(open_folder_button)
-            button_layout.addLayout(row1)
-            row2 = QHBoxLayout()
-            finished_button = QPushButton("Finished (Exit)")
-            finished_button.setFixedSize(*button_size)
-            finished_button.setStyleSheet("background-color: #e74c3c; color: white; padding: 8px 16px;")
-            finished_button.clicked.connect(QCoreApplication.instance().quit)
-            row2.addStretch(1)
-            row2.addWidget(finished_button)
-            row2.addStretch(1)
-            button_layout.addLayout(row2)
-            row3 = QHBoxLayout()
-            new_file_button = QPushButton("Upload a New File")
+            open_folder_button.setStyleSheet("background-color: #6c5f9e; color: white;")
+            open_folder_button.clicked.connect(lambda: (self.open_folder(os.path.dirname(message)), QTimer.singleShot(200, QCoreApplication.instance().quit)))
+            new_file_button = QPushButton("📂   Upload a New File   📂")
             new_file_button.setFixedSize(*button_size)
-            new_file_button.setStyleSheet("background-color: #3498db; color: white;")
-            new_file_button.clicked.connect(self.select_file)
-            row3.addStretch(1)
-            row3.addWidget(new_file_button)
-            row3.addStretch(1)
-            button_layout.addLayout(row3)
-            row4 = QHBoxLayout()
+            new_file_button.setStyleSheet("background-color: #6c5f9e; color: white;")
+            new_file_button.clicked.connect(lambda: (self.handle_new_file(), dialog.accept()))
+            grid.addWidget(whatsapp_button, 0, 0, alignment=Qt.AlignCenter)
+            grid.addWidget(open_folder_button, 0, 1, alignment=Qt.AlignCenter)
+            grid.addWidget(new_file_button, 0, 2, alignment=Qt.AlignCenter)
             done_button = QPushButton("Done")
             done_button.setFixedSize(*button_size)
-            done_button.setStyleSheet("background-color: #2ecc71; color: white; padding: 8px 16px;")
-            done_button.clicked.connect(dialog.accept)  # closes the popup only
-            row4.addStretch(1)
-            row4.addWidget(done_button)
-            row4.addStretch(1)
-            button_layout.addLayout(row4)
-            layout.addLayout(button_layout)
+            done_button.setStyleSheet("background-color: #821e1e; color: white; padding: 8px 16px;")
+            done_button.clicked.connect(dialog.accept)
+            grid.addWidget(done_button, 1, 0, 1, 3, alignment=Qt.AlignCenter)
+            finished_button = QPushButton("Close The App!\r\n(Exit)")
+            finished_button.setFixedSize(*button_size)
+            finished_button.setStyleSheet("background-color: #c90e0e; color: white; padding: 8px 16px;")
+            finished_button.clicked.connect(QCoreApplication.instance().quit)
+            grid.addWidget(finished_button, 2, 0, 1, 3, alignment=Qt.AlignCenter)
+            layout.addLayout(grid)
             dialog.setLayout(layout)
             dialog.exec_()
-
-
         else:
             self.show_message("Error", "Video processing failed.\n" + message)
 
@@ -699,7 +677,6 @@ class ProcessThread(QThread):
     def run(self):
         temp_dir = tempfile.gettempdir()
         temp_log_path = os.path.join(temp_dir, f"ffmpeg2pass-{os.getpid()}-{int(time.time())}.log")
-
         try:
             # Step 1: Calculate corrected times for speed factor
             if self.speed_factor != 1.0:
@@ -711,11 +688,8 @@ class ProcessThread(QThread):
                 start_time_corrected = self.start_time
                 end_time_corrected = self.end_time
                 duration_corrected = self.end_time - self.start_time
-
             self.start_time_corrected = start_time_corrected
             self.duration_corrected = duration_corrected
-
-            # Step 2: Calculate target bitrate
             TARGET_MB = 50.0
             AUDIO_KBPS = 128
             try:
@@ -729,15 +703,10 @@ class ProcessThread(QThread):
             except ZeroDivisionError:
                 self.finished_signal.emit(False, "Selected video duration is zero.")
                 return
-
             self.status_update_signal.emit(f"Calculated target bitrate: {video_bitrate_kbps:.2f} kbps.")
-
-            # Step 3: Get total frames
             total_frames = self.get_total_frames()
             if total_frames is None:
                 self.status_update_signal.emit("Could not determine total frames. Progress bar might be inaccurate.")
-
-            # Step 4: Cropping & scaling logic (from Video.py)
             video_filter_cmd = ""
             healthbar_crop_string = ""
             loot_area_crop_string = ""
@@ -747,15 +716,12 @@ class ProcessThread(QThread):
             elif self.original_resolution == "2560x1440":
                 healthbar_crop_string = "370:65:60:1325"
                 loot_area_crop_string = "440:133:2160:1288"
-
             healthbar_scaled_width = 370 * 0.85 * 2
             healthbar_scaled_height = 65 * 0.85 * 2
             loot_scaled_width = 440 * 0.85 * 1.3 * 1.2
             loot_scaled_height = 133 * 0.85 * 1.3 * 1.2
-
             main_width = 1150
             main_height = 1920
-
             if self.is_mobile_format:
                 video_filter_cmd = (
                     f"split=3[main][lootbar][healthbar];"
@@ -773,7 +739,6 @@ class ProcessThread(QThread):
                     target_resolution = f"scale='min(1280,iw)':-2"
                     self.status_update_signal.emit("Low bitrate detected. Scaling to 720p.")
                 video_filter_cmd = f"fps=60,{target_resolution}"
-
             if self.speed_factor != 1.0:
                 speed_filter = f"setpts=PTS/{self.speed_factor}"
                 if video_filter_cmd:
@@ -781,16 +746,13 @@ class ProcessThread(QThread):
                 else:
                     video_filter_cmd = speed_filter
                 self.status_update_signal.emit(f"Applying speed factor: {self.speed_factor}x to video.")
-
             audio_filter_cmd = ""
             if self.speed_factor != 1.0:
                 audio_filter_cmd = f"atempo={self.speed_factor}"
                 self.status_update_signal.emit(f"Applying speed factor: {self.speed_factor}x to audio.")
-
             output_dir = os.path.join(self.script_dir, "Output_Video_Files")
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
-
             i = 1
             while True:
                 output_file_name = f"Fortnite-Video-{i}.mp4"
@@ -798,10 +760,7 @@ class ProcessThread(QThread):
                 if not os.path.exists(output_path):
                     break
                 i += 1
-
             ffmpeg_path = os.path.join(self.script_dir, 'ffmpeg.exe')
-
-            # Pass 1
             self.status_update_signal.emit("Processing... Pass 1 of 2.")
             pass1_cmd = [
                 ffmpeg_path, '-y',
@@ -820,7 +779,6 @@ class ProcessThread(QThread):
             if audio_filter_cmd:
                 pass1_cmd.extend(['-af', audio_filter_cmd])
             pass1_cmd.append(os.devnull)
-
             proc1 = subprocess.Popen(pass1_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                      creationflags=subprocess.CREATE_NO_WINDOW)
             frame_regex = re.compile(r'frame=\s*(\d+)')
@@ -832,8 +790,6 @@ class ProcessThread(QThread):
                     self.progress_update_signal.emit(int(progress))
             proc1.wait()
             self.progress_update_signal.emit(50)
-
-            # Pass 2
             self.status_update_signal.emit("Processing... Pass 2 of 2.")
             pass2_cmd = [
                 ffmpeg_path, '-y',
@@ -853,7 +809,6 @@ class ProcessThread(QThread):
             if audio_filter_cmd:
                 pass2_cmd.extend(['-af', audio_filter_cmd])
             pass2_cmd.append(output_path)
-
             proc2 = subprocess.Popen(pass2_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                      creationflags=subprocess.CREATE_NO_WINDOW)
             for line in proc2.stdout:
@@ -865,7 +820,6 @@ class ProcessThread(QThread):
             proc2.wait()
             if proc2.returncode != 0:
                 raise subprocess.CalledProcessError(proc2.returncode, proc2.args)
-
             self.progress_update_signal.emit(100)
             if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
                 self.finished_signal.emit(True, output_path)
@@ -897,7 +851,6 @@ class DropAreaFrame(QFrame):
             if os.path.isfile(file_path):
                 self.file_dropped.emit(file_path)
                 return
-
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(

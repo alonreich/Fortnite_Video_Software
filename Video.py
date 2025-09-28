@@ -40,7 +40,6 @@ class TrimmedSlider(QSlider):
         super().__init__(Qt.Horizontal, parent)
         self.trimmed_start = None
         self.trimmed_end = None
-        # visible handle + good contrast
         self.setStyleSheet("""
             QSlider::groove:horizontal {
                 background: #4a667a;
@@ -206,15 +205,33 @@ class VideoCompressorApp(QWidget):
         left_layout.setSpacing(12)
         self.video_frame = QFrame()
         self.video_frame.setStyleSheet("background-color: black;")
-        self.video_frame.setMinimumSize(800, 450)  # larger video area
+        self.video_frame.setMinimumSize(768, 576)
         left_layout.addWidget(self.video_frame)
         self.positionSlider = TrimmedSlider(self)
         self.positionSlider.setRange(0, 0)
         self.positionSlider.sliderMoved.connect(self.set_vlc_position)
         left_layout.addWidget(self.positionSlider)
-        self.file_label = QLabel("No file selected")
-        self.file_label.setStyleSheet("color: lightgray;")
-        left_layout.addWidget(self.file_label)
+        self.playPauseButton = QPushButton("Play")
+        self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.playPauseButton.clicked.connect(self.toggle_play)
+        self.playPauseButton.setFocusPolicy(Qt.NoFocus)
+        self.playPauseButton.setStyleSheet("""
+            QPushButton {
+                background-color: #59A06D;
+                color: white;
+                font-size: 16px;
+                padding: 8px 16px;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background-color: #6fb57f;
+            }
+            QPushButton:pressed {
+                background-color: #4a865a;
+            }
+        """)
+
+        left_layout.addWidget(self.playPauseButton)
         trim_layout = QHBoxLayout()
         self.start_minute_input = QSpinBox()
         self.start_minute_input.setPrefix("Start Min: ")
@@ -242,11 +259,11 @@ class VideoCompressorApp(QWidget):
         trim_layout.addWidget(self.end_second_input)
         trim_layout.addWidget(self.end_trim_button)
         left_layout.addLayout(trim_layout)
-        self.playPauseButton = QPushButton("Play")
-        self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        self.playPauseButton.clicked.connect(self.toggle_play)
-        self.playPauseButton.setFocusPolicy(Qt.NoFocus)
-        left_layout.addWidget(self.playPauseButton)
+#self.playPauseButton = QPushButton("Play")
+#self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+#self.playPauseButton.clicked.connect(self.toggle_play)
+#self.playPauseButton.setFocusPolicy(Qt.NoFocus)
+#left_layout.addWidget(self.playPauseButton)
         self.status_label = QLabel("Status: Ready")
         self.status_label.setStyleSheet("color: white; font-size: 13px; padding: 4px;")
         left_layout.addWidget(self.status_label)
@@ -261,10 +278,10 @@ class VideoCompressorApp(QWidget):
         process_controls.addStretch(1)
         center_group = QHBoxLayout()
         self.process_button = QPushButton("Process Video")
-        self.process_button.setFixedSize(220, 60)  # wider & taller
+        self.process_button.setFixedSize(240, 80)
         self.process_button.setStyleSheet("""
             QPushButton {
-                background-color: #e5ffe5;
+                background-color: #148c14;
                 color: black;
                 font-weight: bold;
                 font-size: 16px;
@@ -398,7 +415,7 @@ class VideoCompressorApp(QWidget):
         self.input_file_path = file_path
         self.drop_label.setWordWrap(True)
         self.drop_label.setText(f"{os.path.basename(self.input_file_path)}")
-        self.file_label.setText(f"File: {self.input_file_path}")
+        #self.file_label.setText(f"File: {self.input_file_path}")
         dir_path = os.path.dirname(file_path)
         if os.path.isdir(dir_path):
             self.last_dir = dir_path

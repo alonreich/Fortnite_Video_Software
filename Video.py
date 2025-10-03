@@ -7,6 +7,8 @@ import subprocess
 import json
 import time
 import re
+import logging
+from logging.handlers import RotatingFileHandler
 import vlc
 from PyQt5.QtGui import QFont, QColor, QPalette, QPainter
 from PyQt5.QtWidgets import QSizePolicy
@@ -15,6 +17,17 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QG
                              QLabel, QPushButton, QProgressBar, QSpinBox, QMessageBox,
                              QFrame, QFileDialog, QCheckBox, QDoubleSpinBox, QSlider, QStyle, QStyleOptionSlider, QDialog)
 
+def setup_logger(base_dir):
+    log_path = os.path.join(base_dir, "Fortnite-Video-Converter.log")
+    logger = logging.getLogger("fvconv")
+    logger.setLevel(logging.INFO)
+    if not logger.handlers:
+        handler = RotatingFileHandler(log_path, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8")
+        fmt = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        handler.setFormatter(fmt)
+        logger.addHandler(handler)
+    return logger
+    
 class ConfigManager:
     def __init__(self, file_path):
         self.file_path = file_path
@@ -47,18 +60,15 @@ class TrimmedSlider(QSlider):
                 border-radius: 4px;
             }
             QSlider::handle:horizontal {
-                background: #ffcc00; /* bright handle */
-                border: 2px solid #000000; /* black border for contrast */
+                background: #ffcc00;
+                border: 2px solid #000000;
                 width: 16px;
                 margin: -6px 0;
                 border-radius: 8px;
             }
-            QSlider::sub-page:horizontal {
-                background: rgba(46,204,113,200);
-                border-radius: 4px;
-            }
+            QSlider::sub-page:horizontal { background: transparent; border-radius: 4px; }
+            QSlider::add-page:horizontal { background: transparent; border-radius: 4px; }
         """)
-
         self.sliderPressed.connect(self._on_pressed)
         self.sliderReleased.connect(self._on_released)
         self._is_pressed = False
@@ -76,26 +86,41 @@ class TrimmedSlider(QSlider):
 
     def paintEvent(self, event):
         super().paintEvent(event)
-
-        if self.trimmed_start is not None and self.trimmed_end is not None:
-            painter = QPainter(self)
-            painter.setRenderHint(QPainter.Antialiasing)
-            trim_out_color = QColor(200, 200, 200)
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(trim_out_color)
-            total_duration = self.maximum() - self.minimum()
-            if total_duration > 0:
-                start_x = self.map_value_to_pixel(int(self.trimmed_start * 1000))
-                end_x = self.map_value_to_pixel(int(self.trimmed_end * 1000))
-                if self.trimmed_start > 0:
-                    painter.drawRect(0, 0, min(start_x, end_x), self.height())
-                if self.trimmed_end < self.maximum():
-                    painter.drawRect(max(start_x, end_x), 0, self.width() - max(start_x, end_x), self.height())
-                trim_in_color = QColor(100, 200, 100, 150)
-                painter.setBrush(trim_in_color)
-                rect_x = min(start_x, end_x)
-                rect_width = abs(end_x - start_x)
-                painter.drawRect(rect_x, 0, rect_width, self.height())
+        if self.trimmed_start is None or self.trimmed_end is None:
+            return
+        opt = QStyleOptionSlider()
+        self.initStyleOption(opt)
+        groove = self.style().subControlRect(QStyle.CC_Slider, opt, QStyle.SC_SliderGroove, self)
+        if groove.width() <= 0:
+            h = 8
+            top = (self.height() - h) // 2
+            groove = QRect(8, top, self.width() - 16, h)
+        minv, maxv = self.minimum(), self.maximum()
+        def map_to_x(ms):
+            if maxv == minv:
+                return groove.left()
+            ratio = (ms - minv) / float(maxv - minv)
+            return int(groove.left() + ratio * groove.width())
+        start_ms = int(self.trimmed_start * 1000)
+        end_ms   = int(self.trimmed_end   * 1000)
+        start_x  = map_to_x(start_ms)
+        end_x    = map_to_x(end_ms)
+        left_x, right_x = (start_x, end_x) if start_x <= end_x else (end_x, start_x)
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(200, 200, 200, 140))
+        if left_x > groove.left():
+            p.drawRect(groove.left(), groove.top(), left_x - groove.left(), groove.height())
+        if right_x < groove.right():
+            p.drawRect(right_x, groove.top(), groove.right() - right_x + 1, groove.height())
+        p.setBrush(QColor(46, 204, 113, 180))
+        p.drawRect(left_x, groove.top(), max(0, right_x - left_x), groove.height())
+        bar_w = 3
+        p.setBrush(QColor(30, 200, 255))  # start
+        p.drawRect(start_x - bar_w // 2, groove.top() - 2, bar_w, groove.height() + 4)
+        p.setBrush(QColor(255, 150, 30))  # end
+        p.drawRect(end_x - bar_w // 2, groove.top() - 2, bar_w, groove.height() + 4)
 
     def map_value_to_pixel(self, value):
         style = QApplication.style()
@@ -123,12 +148,11 @@ class VideoCompressorApp(QWidget):
         self.is_processing = False
         self.script_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(
             os.path.abspath(__file__))
+        self.logger = setup_logger(self.script_dir)
+        self.logger.info("=== Application started ===")
         self.config_manager = ConfigManager(os.path.join(self.script_dir, 'config.json'))
         self.last_dir = self.config_manager.config.get('last_directory', os.path.expanduser('~'))
-        vlc_args = [
-            '--no-xlib', '--no-video-title-show',
-            '--no-plugins-cache', '--verbose=-1'
-        ]
+        vlc_args = ['--no-xlib', '--no-video-title-show', '--no-plugins-cache', '--verbose=-1']
         self.vlc_instance = vlc.Instance(vlc_args)
         self.vlc_player = self.vlc_instance.media_player_new()
         self.timer = QTimer(self)
@@ -155,6 +179,15 @@ class VideoCompressorApp(QWidget):
             event.accept()
         else:
             super().keyPressEvent(event)
+
+    def _on_trim_spin_changed(self):
+        start = (self.start_minute_input.value() * 60) + self.start_second_input.value()
+        end   = (self.end_minute_input.value()   * 60) + self.end_second_input.value()
+        if self.original_duration:
+            start = max(0.0, min(start, self.original_duration))
+            end   = max(0.0, min(end,   self.original_duration))
+        self.trim_start, self.trim_end = start, end
+        self.positionSlider.set_trim_times(self.trim_start, self.trim_end)
 
     def set_style(self):
         self.setStyleSheet("""
@@ -200,12 +233,12 @@ class VideoCompressorApp(QWidget):
         main_layout = QHBoxLayout()
         left_layout = QVBoxLayout()
         left_layout.setSpacing(12)
-        main_layout = QHBoxLayout()
-        left_layout = QVBoxLayout()
-        left_layout.setSpacing(12)
         self.video_frame = QFrame()
         self.video_frame.setStyleSheet("background-color: black;")
         self.video_frame.setMinimumSize(768, 576)
+        self.video_frame.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusProxy(self.video_frame)
         left_layout.addWidget(self.video_frame)
         self.positionSlider = TrimmedSlider(self)
         self.positionSlider.setRange(0, 0)
@@ -245,6 +278,10 @@ class VideoCompressorApp(QWidget):
         self.end_second_input = QSpinBox()
         self.end_second_input.setPrefix("Sec: ")
         self.end_second_input.setRange(0, 59)
+        self.start_minute_input.valueChanged.connect(self._on_trim_spin_changed)
+        self.start_second_input.valueChanged.connect(self._on_trim_spin_changed)
+        self.end_minute_input.valueChanged.connect(self._on_trim_spin_changed)
+        self.end_second_input.valueChanged.connect(self._on_trim_spin_changed)
         self.start_trim_button = QPushButton("Set Start Trim")
         self.start_trim_button.clicked.connect(self.set_start_time)
         self.start_trim_button.setFocusPolicy(Qt.NoFocus)
@@ -259,11 +296,6 @@ class VideoCompressorApp(QWidget):
         trim_layout.addWidget(self.end_second_input)
         trim_layout.addWidget(self.end_trim_button)
         left_layout.addLayout(trim_layout)
-#self.playPauseButton = QPushButton("Play")
-#self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-#self.playPauseButton.clicked.connect(self.toggle_play)
-#self.playPauseButton.setFocusPolicy(Qt.NoFocus)
-#left_layout.addWidget(self.playPauseButton)
         self.status_label = QLabel("Status: Ready")
         self.status_label.setStyleSheet("color: white; font-size: 13px; padding: 4px;")
         left_layout.addWidget(self.status_label)
@@ -310,15 +342,10 @@ class VideoCompressorApp(QWidget):
         self.progress_update_signal.connect(self.progress_bar.setValue)
         right_layout = QVBoxLayout()
         right_layout.setSpacing(12)
-        self.drop_area = DropAreaFrame()
-        self.drop_area.setObjectName("dropArea")
-        drop_layout = QVBoxLayout(self.drop_area)
-        self.drop_label = QLabel("Drag and Drop your Video File Here")
-        self.drop_label.setAlignment(Qt.AlignCenter)
-        drop_layout.addWidget(self.drop_label)
         right_inner_layout = QVBoxLayout()
         self.drop_area = DropAreaFrame()
         self.drop_area.setObjectName("dropArea")
+        self.drop_area.file_dropped.connect(self.handle_file_selection)
         drop_layout = QVBoxLayout(self.drop_area)
         self.drop_label = QLabel("Drag & Drop\r\nVideo File Here:")
         self.drop_label.setAlignment(Qt.AlignCenter)
@@ -441,6 +468,7 @@ class VideoCompressorApp(QWidget):
             self.end_minute_input.setRange(0, total_minutes)
         self.timer.start(100)
         self.get_video_info()
+        self.video_frame.setFocus()  # ensure Space goes to keyPressEvent/toggle_play
 
     def set_status_text_with_color(self, text, color="white"):
         self.status_label.setStyleSheet(f"color: {color};")
@@ -461,8 +489,8 @@ class VideoCompressorApp(QWidget):
             result = subprocess.run(cmd, capture_output=True, text=True, check=True,
                                     creationflags=subprocess.CREATE_NO_WINDOW)
             self.original_resolution = result.stdout.strip()
-            if self.original_resolution not in ["1920x1080", "2560x1440"]:
-                error_message = "This software is designed to work with HD or 1440p resolution only. Apologies!"
+            if self.original_resolution not in ["1920x1080", "2560x1440", "3840x2160"]:
+                error_message = "This software is designed for 1080p/1440p/4K inputs."
                 self.set_status_text_with_color(error_message, "red")
                 self.process_button.setEnabled(False)
                 self.duration_label.setText(f"Duration: N/A | Resolution: {self.original_resolution}")
@@ -497,9 +525,8 @@ class VideoCompressorApp(QWidget):
         if not self.input_file_path or not os.path.exists(self.input_file_path):
             self.show_message("Error", "Please select a valid video file first.")
             return
-        if self.original_resolution not in ["1920x1080", "2560x1440"]:
-            self.set_status_text_with_color(
-                "This software is designed to work with HD or 1440p resolution only. Apologies!", "red")
+        if self.original_resolution not in ["1920x1080", "2560x1440", "3840x2160"]:
+            self.set_status_text_with_color("Unsupported input resolution.", "red")
             return
         start_time = (self.start_minute_input.value() * 60) + self.start_second_input.value()
         end_time = (self.end_minute_input.value() * 60) + self.end_second_input.value()
@@ -523,7 +550,8 @@ class VideoCompressorApp(QWidget):
             self.script_dir,
             self.progress_update_signal,
             self.status_update_signal,
-            self.process_finished_signal
+            self.process_finished_signal,
+            self.logger
         )
         self.process_thread.finished_signal.connect(self.on_process_finished)
         self.process_thread.start()
@@ -544,7 +572,6 @@ class VideoCompressorApp(QWidget):
             self.positionSlider.set_trim_times(0, 0)
         except AttributeError:
             pass
-        self.file_label.setText("No file selected")
         self.drop_label.setText("Drag & Drop\r\nVideo File Here:")
     
     def handle_new_file(self):
@@ -557,6 +584,16 @@ class VideoCompressorApp(QWidget):
         self.is_processing = False
         self.process_button.setEnabled(True)
         self.status_update_signal.emit("Ready to process another video.")
+        try:
+            if success:
+                orig_size = os.path.getsize(self.input_file_path) if self.input_file_path and os.path.exists(self.input_file_path) else 0
+                new_size  = os.path.getsize(message) if message and os.path.exists(message) else 0
+                self.logger.info(f"RESULT: SUCCESS | file='{os.path.basename(self.input_file_path)}' | "
+                                f"original_size_bytes={orig_size} | new_size_bytes={new_size}")
+            else:
+                self.logger.error(f"RESULT: FAILURE | file='{os.path.basename(self.input_file_path) if self.input_file_path else 'N/A'}' | details={message}")
+        except Exception:
+            pass
         if success:
             output_dir = os.path.dirname(message)
             dialog = QDialog(self)
@@ -653,7 +690,7 @@ class VideoCompressorApp(QWidget):
 
 class ProcessThread(QThread):
     def __init__(self, input_path, start_time, end_time, original_resolution, is_mobile_format, speed_factor,
-                 script_dir, progress_update_signal, status_update_signal, finished_signal):
+                 script_dir, progress_update_signal, status_update_signal, finished_signal, logger):
         super().__init__()
         self.input_path = input_path
         self.start_time = start_time
@@ -666,9 +703,9 @@ class ProcessThread(QThread):
         self.progress_update_signal = progress_update_signal
         self.status_update_signal = status_update_signal
         self.finished_signal = finished_signal
+        self.logger = logger
         self.start_time_corrected = self.start_time / self.speed_factor if self.speed_factor != 1.0 else self.start_time
-        self.duration_corrected = (
-                                              self.end_time - self.start_time) / self.speed_factor if self.speed_factor != 1.0 else self.end_time - self.start_time
+        self.duration_corrected = (self.end_time - self.start_time) / self.speed_factor if self.speed_factor != 1.0 else (self.end_time - self.start_time)
 
     def get_total_frames(self):
         ffprobe_path = os.path.join(self.script_dir, 'ffprobe.exe')
@@ -727,27 +764,41 @@ class ProcessThread(QThread):
             video_filter_cmd = ""
             healthbar_crop_string = ""
             loot_area_crop_string = ""
+            hb_1440 = (370, 65, 60, 1325)      # w:h:x:y
+            loot_1440 = (440, 133, 2160, 1288) # w:h:x:y
+            def scale_box(box, s):
+                return tuple(int(round(v * s)) for v in box)
             if self.original_resolution == "1920x1080":
-                healthbar_crop_string = "278:49:45:994"
-                loot_area_crop_string = "330:100:1620:966"
+                hb = scale_box(hb_1440, 0.75)
+                loot = scale_box(loot_1440, 0.75)
             elif self.original_resolution == "2560x1440":
-                healthbar_crop_string = "370:65:60:1325"
-                loot_area_crop_string = "440:133:2160:1288"
-            healthbar_scaled_width = 370 * 0.85 * 2
-            healthbar_scaled_height = 65 * 0.85 * 2
-            loot_scaled_width = 440 * 0.85 * 1.3 * 1.2
-            loot_scaled_height = 133 * 0.85 * 1.3 * 1.2
+                hb = hb_1440
+                loot = loot_1440
+            elif self.original_resolution == "3840x2160":
+                hb = scale_box(hb_1440, 1.5)
+                loot = scale_box(loot_1440, 1.5)
+            else:
+                hb = hb_1440
+                loot = loot_1440
+            healthbar_crop_string = f"{hb[0]}:{hb[1]}:{hb[2]}:{hb[3]}"
+            loot_area_crop_string   = f"{loot[0]}:{loot[1]}:{loot[2]}:{loot[3]}"
+            s = 0.75 if self.original_resolution == "1920x1080" else (1.5 if self.original_resolution == "3840x2160" else 1.0)
+            healthbar_scaled_width  = int(round(370 * 0.85 * 2 * s))
+            healthbar_scaled_height = int(round(65  * 0.85 * 2 * s))
+            loot_scaled_width       = int(round(440 * 0.85 * 1.3 * 1.2 * s))
+            loot_scaled_height      = int(round(133 * 0.85 * 1.3 * 1.2 * s))
             main_width = 1150
             main_height = 1920
             if self.is_mobile_format:
                 video_filter_cmd = (
                     f"split=3[main][lootbar][healthbar];"
                     f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                    f"[lootbar]crop={loot_area_crop_string},scale={loot_scaled_width * 1.2:.0f}:{loot_scaled_height * 1.2:.0f},format=yuva444p,colorchannelmixer=aa=0.7[lootbar_scaled];"
-                    f"[healthbar]crop={healthbar_crop_string},scale={healthbar_scaled_width * 1.1:.0f}:{healthbar_scaled_height * 1.1:.0f},format=yuva444p,colorchannelmixer=aa=0.7[healthbar_scaled];"
+                    f"[lootbar]crop={loot_area_crop_string},scale={loot_scaled_width * 1.2:.0f}:{loot_scaled_height * 1.2:.0f},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
+                    f"[healthbar]crop={healthbar_crop_string},scale={healthbar_scaled_width * 1.1:.0f}:{healthbar_scaled_height * 1.1:.0f},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
                     f"[main_cropped][lootbar_scaled]overlay={main_width - loot_scaled_width - 85:.0f}:{main_height - loot_scaled_height + 70:.0f}[temp];"
                     f"[temp][healthbar_scaled]overlay=-100:{main_height - healthbar_scaled_height:.0f}"
                 )
+                self.logger.info(f"Mobile portrait mode: loot_crop={loot_area_crop_string}, health_crop={healthbar_crop_string}, alpha=0.8")
                 self.status_update_signal.emit("Optimizing for mobile: Applying portrait crop.")
             else:
                 original_width, original_height = map(int, self.original_resolution.split('x'))
@@ -767,6 +818,7 @@ class ProcessThread(QThread):
             if self.speed_factor != 1.0:
                 audio_filter_cmd = f"atempo={self.speed_factor}"
                 self.status_update_signal.emit(f"Applying speed factor: {self.speed_factor}x to audio.")
+                self.logger.info(f"Audio atempo set to {self.speed_factor}")
             output_dir = os.path.join(self.script_dir, "Output_Video_Files")
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -778,71 +830,53 @@ class ProcessThread(QThread):
                     break
                 i += 1
             ffmpeg_path = os.path.join(self.script_dir, 'ffmpeg.exe')
-            self.status_update_signal.emit("Processing... Pass 1 of 2.")
-            pass1_cmd = [
-                ffmpeg_path, '-y',
-                '-hwaccel', 'auto',
-                '-i', self.input_path,
-                '-ss', str(start_time_corrected), '-t', str(duration_corrected),
-                '-c:v', 'h264_nvenc', '-b:v', f'{video_bitrate_kbps}k',
-                '-pass', '1', '-an', '-f', 'mp4',
-                '-passlogfile', temp_log_path,
-                '-loglevel', 'info'
-            ]
-            if self.is_mobile_format:
-                pass1_cmd.extend(['-filter_complex', video_filter_cmd])
-            elif video_filter_cmd:
-                pass1_cmd.extend(['-vf', video_filter_cmd])
-            if audio_filter_cmd:
-                pass1_cmd.extend(['-af', audio_filter_cmd])
-            pass1_cmd.append(os.devnull)
-            proc1 = subprocess.Popen(pass1_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                     creationflags=subprocess.CREATE_NO_WINDOW)
             frame_regex = re.compile(r'frame=\s*(\d+)')
-            for line in proc1.stdout:
-                frame_match = frame_regex.search(line)
-                if frame_match and total_frames:
-                    current_frame = int(frame_match.group(1))
-                    progress = (current_frame / total_frames) * 50
-                    self.progress_update_signal.emit(int(progress))
-            proc1.wait()
-            self.progress_update_signal.emit(50)
-            self.status_update_signal.emit("Processing... Pass 2 of 2.")
-            pass2_cmd = [
+            self.progress_update_signal.emit(0)
+            self.status_update_signal.emit("Processing video (NVENC VBR HQ)...")
+            cmd = [
                 ffmpeg_path, '-y',
                 '-hwaccel', 'auto',
                 '-i', self.input_path,
                 '-ss', str(start_time_corrected), '-t', str(duration_corrected),
-                '-c:v', 'h264_nvenc', '-b:v', f'{video_bitrate_kbps}k',
-                '-pass', '2',
+                '-c:v', 'h264_nvenc', '-rc', 'vbr_hq', '-b:v', f'{video_bitrate_kbps}k',
+                '-maxrate', f'{int(video_bitrate_kbps*1.5)}k', '-bufsize', f'{int(video_bitrate_kbps*2)}k',
                 '-c:a', 'aac', '-b:a', f'{AUDIO_KBPS}k',
-                '-passlogfile', temp_log_path,
                 '-loglevel', 'info'
             ]
             if self.is_mobile_format:
-                pass2_cmd.extend(['-filter_complex', video_filter_cmd])
+                cmd.extend(['-filter_complex', video_filter_cmd])
             elif video_filter_cmd:
-                pass2_cmd.extend(['-vf', video_filter_cmd])
+                cmd.extend(['-vf', video_filter_cmd])
             if audio_filter_cmd:
-                pass2_cmd.extend(['-af', audio_filter_cmd])
-            pass2_cmd.append(output_path)
-            proc2 = subprocess.Popen(pass2_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                     creationflags=subprocess.CREATE_NO_WINDOW)
-            for line in proc2.stdout:
+                cmd.extend(['-af', audio_filter_cmd])
+            cmd.append(output_path)
+            self.logger.info(f"FFmpeg CMD: {' '.join(map(str, cmd))}")
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
+            )
+            for line in proc.stdout:
+                self.logger.info(f"FFmpeg: {line.strip()}")
                 frame_match = frame_regex.search(line)
                 if frame_match and total_frames:
                     current_frame = int(frame_match.group(1))
-                    progress = 50 + (current_frame / total_frames) * 50
-                    self.progress_update_signal.emit(int(progress))
-            proc2.wait()
-            if proc2.returncode != 0:
-                raise subprocess.CalledProcessError(proc2.returncode, proc2.args)
+                    progress = int((current_frame / total_frames) * 100)
+                    self.progress_update_signal.emit(progress)
+            proc.wait()
+            if proc.returncode != 0:
+                raise subprocess.CalledProcessError(proc.returncode, cmd)
             self.progress_update_signal.emit(100)
             if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+                self.logger.info(f"Job SUCCESS | start={self.start_time}s end={self.end_time}s | "
+                                f"res={self.original_resolution} | mobile={self.is_mobile_format} | "
+                                f"speed={self.speed_factor}x | output={output_path}")
                 self.finished_signal.emit(True, output_path)
             else:
+                self.logger.error("Job FAILURE: Output file missing or empty.")
                 self.finished_signal.emit(False, "Output file was created, but it's empty.")
         except Exception as e:
+            self.logger.exception(f"Job FAILURE with exception: {e}")
             self.finished_signal.emit(False, f"An unexpected error occurred: {e}.")
         finally:
             for ext in ["", "-0.log", "-1.log", ".log", ".log-0.log", ".log-1.log"]:
@@ -859,6 +893,10 @@ class DropAreaFrame(QFrame):
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 

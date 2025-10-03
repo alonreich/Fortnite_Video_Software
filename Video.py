@@ -732,7 +732,6 @@ class ProcessThread(QThread):
         temp_dir = tempfile.gettempdir()
         temp_log_path = os.path.join(temp_dir, f"ffmpeg2pass-{os.getpid()}-{int(time.time())}.log")
         try:
-            # Step 1: Calculate corrected times for speed factor
             if self.speed_factor != 1.0:
                 start_time_corrected = self.start_time / self.speed_factor
                 end_time_corrected = self.end_time / self.speed_factor
@@ -764,41 +763,61 @@ class ProcessThread(QThread):
             video_filter_cmd = ""
             healthbar_crop_string = ""
             loot_area_crop_string = ""
-            hb_1440 = (370, 65, 60, 1325)      # w:h:x:y
-            loot_1440 = (440, 133, 2160, 1288) # w:h:x:y
+            stats_area_crop_string = ""
+            HB_UP_1440 = 8
+            hb_1440   = (370, 65, 60, max(0, 1325 - HB_UP_1440))
+            loot_1440 = (440, 133, 2160, 1288)
+            stats_1440 = (280, 31, 2264, 270)
             def scale_box(box, s):
                 return tuple(int(round(v * s)) for v in box)
             if self.original_resolution == "1920x1080":
-                hb = scale_box(hb_1440, 0.75)
-                loot = scale_box(loot_1440, 0.75)
+                hb    = scale_box(hb_1440, 0.75)
+                loot  = scale_box(loot_1440, 0.75)
+                stats = scale_box(stats_1440, 0.75)
             elif self.original_resolution == "2560x1440":
-                hb = hb_1440
-                loot = loot_1440
+                hb, loot, stats = hb_1440, loot_1440, stats_1440
             elif self.original_resolution == "3840x2160":
-                hb = scale_box(hb_1440, 1.5)
-                loot = scale_box(loot_1440, 1.5)
+                hb    = scale_box(hb_1440, 1.5)
+                loot  = scale_box(loot_1440, 1.5)
+                stats = scale_box(stats_1440, 1.5)
             else:
-                hb = hb_1440
-                loot = loot_1440
-            healthbar_crop_string = f"{hb[0]}:{hb[1]}:{hb[2]}:{hb[3]}"
-            loot_area_crop_string   = f"{loot[0]}:{loot[1]}:{loot[2]}:{loot[3]}"
+                hb, loot, stats = hb_1440, loot_1440, stats_1440
+            healthbar_crop_string  = f"{hb[0]}:{hb[1]}:{hb[2]}:{hb[3]}"
+            loot_area_crop_string  = f"{loot[0]}:{loot[1]}:{loot[2]}:{loot[3]}"
+            stats_area_crop_string = f"{stats[0]}:{stats[1]}:{stats[2]}:{stats[3]}"
             s = 0.75 if self.original_resolution == "1920x1080" else (1.5 if self.original_resolution == "3840x2160" else 1.0)
             healthbar_scaled_width  = int(round(370 * 0.85 * 2 * s))
             healthbar_scaled_height = int(round(65  * 0.85 * 2 * s))
             loot_scaled_width       = int(round(440 * 0.85 * 1.3 * 1.2 * s))
             loot_scaled_height      = int(round(133 * 0.85 * 1.3 * 1.2 * s))
-            main_width = 1150
+            stats_scaled_width  = int(round(stats[0] * 1.8 * s))
+            stats_scaled_height = int(round(stats[1] * 1.8 * s))
+            main_width  = 1150
             main_height = 1920
             if self.is_mobile_format:
+                HB_OVERLAY_UP_1440 = 14
+                hb_overlay_up = int(round(HB_OVERLAY_UP_1440 * s))
+                hb_overlay_y  = max(0, int(round(main_height - healthbar_scaled_height - hb_overlay_up)))
+                loot_overlay_x = int(round(main_width - loot_scaled_width - 85))
+                loot_overlay_y = int(round(main_height - loot_scaled_height + 70))
+                STATS_MARGIN_ABOVE_1440 = 8
+                stats_margin = int(round(STATS_MARGIN_ABOVE_1440 * s))
+                stats_overlay_x = int(round((main_width - stats_scaled_width) / 2))
+                base_y = min(hb_overlay_y, loot_overlay_y)
+                stats_overlay_y = max(0, base_y - stats_scaled_height - stats_margin)
                 video_filter_cmd = (
-                    f"split=3[main][lootbar][healthbar];"
+                    f"split=4[main][lootbar][healthbar][stats];"
                     f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
                     f"[lootbar]crop={loot_area_crop_string},scale={loot_scaled_width * 1.2:.0f}:{loot_scaled_height * 1.2:.0f},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
                     f"[healthbar]crop={healthbar_crop_string},scale={healthbar_scaled_width * 1.1:.0f}:{healthbar_scaled_height * 1.1:.0f},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                    f"[main_cropped][lootbar_scaled]overlay={main_width - loot_scaled_width - 85:.0f}:{main_height - loot_scaled_height + 70:.0f}[temp];"
-                    f"[temp][healthbar_scaled]overlay=-100:{main_height - healthbar_scaled_height:.0f}"
+                    f"[stats]crop={stats_area_crop_string},scale={stats_scaled_width}:{stats_scaled_height},format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
+                    f"[main_cropped][lootbar_scaled]overlay={loot_overlay_x}:{loot_overlay_y}[t1];"
+                    f"[t1][healthbar_scaled]overlay=-100:{hb_overlay_y}[t2];"
+                    f"[t2][stats_scaled]overlay={stats_overlay_x}:{stats_overlay_y}"
                 )
-                self.logger.info(f"Mobile portrait mode: loot_crop={loot_area_crop_string}, health_crop={healthbar_crop_string}, alpha=0.8")
+                self.logger.info(f"Mobile portrait mode: loot={loot_area_crop_string}, health={healthbar_crop_string}, "
+                                f"stats={stats_area_crop_string}, alpha=0.8, hb_up={hb_overlay_up}px, "
+                                f"stats_xy=({stats_overlay_x},{stats_overlay_y})")
                 self.status_update_signal.emit("Optimizing for mobile: Applying portrait crop.")
             else:
                 original_width, original_height = map(int, self.original_resolution.split('x'))

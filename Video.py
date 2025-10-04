@@ -12,7 +12,7 @@ from logging.handlers import RotatingFileHandler
 import vlc
 from PyQt5.QtGui import QFont, QColor, QPalette, QPainter, QPixmap
 from PyQt5.QtWidgets import QSizePolicy
-from PyQt5.QtCore import Qt, pyqtSignal, QThread, QUrl, QTimer, QCoreApplication, QRect
+from PyQt5.QtCore import Qt, pyqtSignal, QThread, QUrl, QTimer, QCoreApplication, QRect, QEvent
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLabel, QPushButton, QProgressBar, QSpinBox, QMessageBox,
                              QFrame, QFileDialog, QCheckBox, QDoubleSpinBox, QSlider, QStyle, QStyleOptionSlider, QDialog)
@@ -148,6 +148,12 @@ class VideoCompressorApp(QWidget):
     progress_update_signal = pyqtSignal(int)
     status_update_signal = pyqtSignal(str)
     process_finished_signal = pyqtSignal(bool, str)
+    
+    def eventFilter(self, obj, event):
+        if obj is self.video_frame and event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
+            self.toggle_play()
+            return True
+        return super().eventFilter(obj, event)
 
     def __init__(self, file_path=None):
         super().__init__()
@@ -179,6 +185,8 @@ class VideoCompressorApp(QWidget):
             self.setGeometry(x, y, w, h)
         else:
             self.setGeometry(100, 100, 900, 700)
+            self.set_style()
+        self.process_finished_signal.connect(self.on_process_finished)
         self.set_style()
         self.init_ui()
         if file_path:
@@ -250,6 +258,7 @@ class VideoCompressorApp(QWidget):
         self.video_frame.setFocusPolicy(Qt.StrongFocus)
         self.setFocusPolicy(Qt.StrongFocus)
         self.setFocusProxy(self.video_frame)
+        self.video_frame.installEventFilter(self)
         left_layout.addWidget(self.video_frame)
         self.positionSlider = TrimmedSlider(self)
         self.positionSlider.setRange(0, 0)
@@ -317,8 +326,10 @@ class VideoCompressorApp(QWidget):
         process_controls = QHBoxLayout()
         self.mobile_checkbox = QCheckBox("Mobile Format (Portrait Video)")
         self.mobile_checkbox.setStyleSheet("font-size: 18px; font-weight: bold;")
+        self.mobile_checkbox.setChecked(bool(self.config_manager.config.get('mobile_checked', False)))
         self.teammates_checkbox = QCheckBox("Show Teammates Healthbar")
         self.teammates_checkbox.setStyleSheet("font-size: 14px;")
+        self.teammates_checkbox.setChecked(bool(self.config_manager.config.get('teammates_checked', False)))
         process_controls.addWidget(self.mobile_checkbox, alignment=Qt.AlignLeft)
         process_controls.addWidget(self.teammates_checkbox, alignment=Qt.AlignLeft)
         process_controls.addStretch(1)
@@ -344,7 +355,9 @@ class VideoCompressorApp(QWidget):
         self.speed_spinbox.setPrefix("Speed x")
         self.speed_spinbox.setDecimals(1)
         self.speed_spinbox.setSingleStep(0.1)
-        self.speed_spinbox.setValue(1.1)
+        self.speed_spinbox.setRange(0.5, 3.1)  # enforce caps
+        self.speed_spinbox.setValue(float(self.config_manager.config.get('last_speed', 1.1)))
+        self.speed_spinbox.setMinimumWidth(140)  # wider box so text fits
         self.speed_spinbox.setStyleSheet("font-size: 14px;")
         center_group.addWidget(self.speed_spinbox, alignment=Qt.AlignVCenter)
         process_controls.addLayout(center_group)
@@ -359,6 +372,7 @@ class VideoCompressorApp(QWidget):
         right_inner_layout = QVBoxLayout()
         self.drop_area = DropAreaFrame()
         self.drop_area.setObjectName("dropArea")
+        self.drop_area.setFocusPolicy(Qt.NoFocus)
         self.drop_area.file_dropped.connect(self.handle_file_selection)
         drop_layout = QVBoxLayout(self.drop_area)
         self.drop_label = QLabel("Drag & Drop\r\nVideo File Here:")
@@ -482,7 +496,8 @@ class VideoCompressorApp(QWidget):
             self.end_minute_input.setRange(0, total_minutes)
         self.timer.start(100)
         self.get_video_info()
-        self.video_frame.setFocus()  # ensure Space goes to keyPressEvent/toggle_play
+        self.video_frame.setFocus()
+        self.activateWindow()
 
     def set_status_text_with_color(self, text, color="white"):
         self.status_label.setStyleSheet(f"color: {color};")
@@ -546,6 +561,11 @@ class VideoCompressorApp(QWidget):
         end_time = (self.end_minute_input.value() * 60) + self.end_second_input.value()
         is_mobile_format = self.mobile_checkbox.isChecked()
         speed_factor = self.speed_spinbox.value()
+        if speed_factor < 0.5 or speed_factor > 3.1:
+            self.show_message("Invalid Speed", "Allowed speed range is 0.5x to 3.1x.")
+            self.is_processing = False
+            self.process_button.setEnabled(True)
+            return
         if start_time < 0 or end_time < 0 or start_time >= end_time or end_time > self.original_duration:
             self.show_message("Error",
                               "Invalid start and end times. Please ensure end time > start time and within video duration.")
@@ -554,6 +574,11 @@ class VideoCompressorApp(QWidget):
         self.process_button.setEnabled(False)
         self.set_status_text_with_color("Processing video... Please wait.", "white")
         self.progress_update_signal.emit(0)
+        cfg = dict(self.config_manager.config)
+        cfg['last_speed'] = float(speed_factor)
+        cfg['mobile_checked'] = bool(is_mobile_format)
+        cfg['teammates_checked'] = bool(self.teammates_checkbox.isChecked())
+        self.config_manager.save_config(cfg)
         self.process_thread = ProcessThread(
             self.input_file_path,
             start_time,
@@ -568,7 +593,6 @@ class VideoCompressorApp(QWidget):
             self.logger,
             show_teammates_overlay=self.teammates_checkbox.isChecked()
         )
-        self.process_thread.finished_signal.connect(self.on_process_finished)
         self.process_thread.start()
 
     def reset_app_state(self):
@@ -661,6 +685,9 @@ class VideoCompressorApp(QWidget):
             'w': self.geometry().width(),
             'h': self.geometry().height()
         }
+        cfg['last_speed'] = float(self.speed_spinbox.value())
+        cfg['mobile_checked'] = bool(self.mobile_checkbox.isChecked())
+        cfg['teammates_checked'] = bool(self.teammates_checkbox.isChecked())
         self.config_manager.save_config(cfg)
         super().closeEvent(event)
 
@@ -876,9 +903,21 @@ class ProcessThread(QThread):
                 self.status_update_signal.emit(f"Applying speed factor: {self.speed_factor}x to video.")
             audio_filter_cmd = ""
             if self.speed_factor != 1.0:
-                audio_filter_cmd = f"atempo={self.speed_factor}"
+                s = float(self.speed_factor)
+                chain = []
+                # break into legal segments (0.5–2.0) for FFmpeg atempo
+                if s >= 1.0:
+                    while s > 2.0:
+                        chain.append(2.0); s /= 2.0
+                    chain.append(s)
+                else:
+                    while s < 0.5:
+                        chain.append(0.5); s /= 0.5
+                    chain.append(s)
+                chain = [min(2.0, max(0.5, round(f, 3))) for f in chain if abs(f-1.0) > 1e-3]
+                audio_filter_cmd = ",".join(f"atempo={f}" for f in chain)
                 self.status_update_signal.emit(f"Applying speed factor: {self.speed_factor}x to audio.")
-                self.logger.info(f"Audio atempo set to {self.speed_factor}")
+                self.logger.info(f"Audio atempo chain: {audio_filter_cmd or 'none (1.0x)'}")
             output_dir = os.path.join(self.script_dir, "Output_Video_Files")
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)

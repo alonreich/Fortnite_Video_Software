@@ -10,9 +10,9 @@ import re
 import logging
 from logging.handlers import RotatingFileHandler
 import vlc
-from PyQt5.QtGui import QFont, QColor, QPalette, QPainter
+from PyQt5.QtGui import QFont, QColor, QPalette, QPainter, QPixmap
 from PyQt5.QtWidgets import QSizePolicy
-from PyQt5.QtCore import Qt, pyqtSignal, QThread, QUrl, QTimer, QCoreApplication
+from PyQt5.QtCore import Qt, pyqtSignal, QThread, QUrl, QTimer, QCoreApplication, QRect
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLabel, QPushButton, QProgressBar, QSpinBox, QMessageBox,
                              QFrame, QFileDialog, QCheckBox, QDoubleSpinBox, QSlider, QStyle, QStyleOptionSlider, QDialog)
@@ -60,11 +60,10 @@ class TrimmedSlider(QSlider):
                 border-radius: 4px;
             }
             QSlider::handle:horizontal {
-                background: #ffcc00;
-                border: 2px solid #000000;
+                background: transparent;   /* hide default circle */
+                border: none;
                 width: 16px;
                 margin: -6px 0;
-                border-radius: 8px;
             }
             QSlider::sub-page:horizontal { background: transparent; border-radius: 4px; }
             QSlider::add-page:horizontal { background: transparent; border-radius: 4px; }
@@ -117,10 +116,22 @@ class TrimmedSlider(QSlider):
         p.setBrush(QColor(46, 204, 113, 180))
         p.drawRect(left_x, groove.top(), max(0, right_x - left_x), groove.height())
         bar_w = 3
-        p.setBrush(QColor(30, 200, 255))  # start
+        p.setBrush(QColor(30, 200, 255))
         p.drawRect(start_x - bar_w // 2, groove.top() - 2, bar_w, groove.height() + 4)
-        p.setBrush(QColor(255, 150, 30))  # end
+        p.setBrush(QColor(255, 150, 30))
         p.drawRect(end_x - bar_w // 2, groove.top() - 2, bar_w, groove.height() + 4)
+        handle_rect = self.style().subControlRect(QStyle.CC_Slider, opt, QStyle.SC_SliderHandle, self)
+        cx = handle_rect.center().x()
+        orig_w = 4
+        orig_h = groove.height() + 12
+        bar_w  = int(round(orig_w * 1.7))
+        bar_h  = int(round(orig_h * 1.5))
+        cy   = groove.center().y()
+        top  = cy - bar_h // 2
+        bar  = QRect(cx - bar_w // 2, top, bar_w, bar_h)
+        p.setPen(QColor(0, 0, 0))
+        p.setBrush(QColor(30, 30, 30))
+        p.drawRoundedRect(bar, 3, 3)
 
     def map_value_to_pixel(self, value):
         style = QApplication.style()
@@ -306,7 +317,10 @@ class VideoCompressorApp(QWidget):
         process_controls = QHBoxLayout()
         self.mobile_checkbox = QCheckBox("Mobile Format (Portrait Video)")
         self.mobile_checkbox.setStyleSheet("font-size: 18px; font-weight: bold;")
+        self.teammates_checkbox = QCheckBox("Show Teammates Healthbar")
+        self.teammates_checkbox.setStyleSheet("font-size: 14px;")
         process_controls.addWidget(self.mobile_checkbox, alignment=Qt.AlignLeft)
+        process_controls.addWidget(self.teammates_checkbox, alignment=Qt.AlignLeft)
         process_controls.addStretch(1)
         center_group = QHBoxLayout()
         self.process_button = QPushButton("Process Video")
@@ -551,7 +565,8 @@ class VideoCompressorApp(QWidget):
             self.progress_update_signal,
             self.status_update_signal,
             self.process_finished_signal,
-            self.logger
+            self.logger,
+            show_teammates_overlay=self.teammates_checkbox.isChecked()
         )
         self.process_thread.finished_signal.connect(self.on_process_finished)
         self.process_thread.start()
@@ -690,7 +705,8 @@ class VideoCompressorApp(QWidget):
 
 class ProcessThread(QThread):
     def __init__(self, input_path, start_time, end_time, original_resolution, is_mobile_format, speed_factor,
-                 script_dir, progress_update_signal, status_update_signal, finished_signal, logger):
+                 script_dir, progress_update_signal, status_update_signal, finished_signal, logger,
+                 show_teammates_overlay=False):
         super().__init__()
         self.input_path = input_path
         self.start_time = start_time
@@ -699,6 +715,7 @@ class ProcessThread(QThread):
         self.original_resolution = original_resolution
         self.is_mobile_format = is_mobile_format
         self.speed_factor = speed_factor
+        self.show_teammates_overlay = bool(show_teammates_overlay)
         self.script_dir = script_dir
         self.progress_update_signal = progress_update_signal
         self.status_update_signal = status_update_signal
@@ -768,30 +785,36 @@ class ProcessThread(QThread):
             hb_1440   = (370, 65, 60, max(0, 1325 - HB_UP_1440))
             loot_1440 = (440, 133, 2160, 1288)
             stats_1440 = (280, 31, 2264, 270)
+            team_1440  = (160, 190, 74, 26)
             def scale_box(box, s):
                 return tuple(int(round(v * s)) for v in box)
             if self.original_resolution == "1920x1080":
                 hb    = scale_box(hb_1440, 0.75)
                 loot  = scale_box(loot_1440, 0.75)
                 stats = scale_box(stats_1440, 0.75)
+                team  = scale_box(team_1440, 0.75)
             elif self.original_resolution == "2560x1440":
-                hb, loot, stats = hb_1440, loot_1440, stats_1440
+                hb, loot, stats, team = hb_1440, loot_1440, stats_1440, team_1440
             elif self.original_resolution == "3840x2160":
                 hb    = scale_box(hb_1440, 1.5)
                 loot  = scale_box(loot_1440, 1.5)
                 stats = scale_box(stats_1440, 1.5)
+                team  = scale_box(team_1440, 1.5)
             else:
-                hb, loot, stats = hb_1440, loot_1440, stats_1440
+                hb, loot, stats, team = hb_1440, loot_1440, stats_1440, team_1440
             healthbar_crop_string  = f"{hb[0]}:{hb[1]}:{hb[2]}:{hb[3]}"
             loot_area_crop_string  = f"{loot[0]}:{loot[1]}:{loot[2]}:{loot[3]}"
             stats_area_crop_string = f"{stats[0]}:{stats[1]}:{stats[2]}:{stats[3]}"
+            team_crop_string       = f"{team[0]}:{team[1]}:{team[2]}:{team[3]}"
             s = 0.75 if self.original_resolution == "1920x1080" else (1.5 if self.original_resolution == "3840x2160" else 1.0)
             healthbar_scaled_width  = int(round(370 * 0.85 * 2 * s))
             healthbar_scaled_height = int(round(65  * 0.85 * 2 * s))
             loot_scaled_width       = int(round(440 * 0.85 * 1.3 * 1.2 * s))
             loot_scaled_height      = int(round(133 * 0.85 * 1.3 * 1.2 * s))
-            stats_scaled_width  = int(round(stats[0] * 1.8 * s))
-            stats_scaled_height = int(round(stats[1] * 1.8 * s))
+            stats_scaled_width      = int(round(stats[0] * 1.8 * s))
+            stats_scaled_height     = int(round(stats[1] * 1.8 * s))
+            team_scaled_width       = int(round(team[0]  * 1.32 * s))  # +20% vs 1.10
+            team_scaled_height      = int(round(team[1]  * 1.32 * s))
             main_width  = 1150
             main_height = 1920
             if self.is_mobile_format:
@@ -805,19 +828,37 @@ class ProcessThread(QThread):
                 stats_overlay_x = int(round((main_width - stats_scaled_width) / 2))
                 base_y = min(hb_overlay_y, loot_overlay_y)
                 stats_overlay_y = max(0, base_y - stats_scaled_height - stats_margin)
-                video_filter_cmd = (
-                    f"split=4[main][lootbar][healthbar][stats];"
-                    f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                    f"[lootbar]crop={loot_area_crop_string},scale={loot_scaled_width * 1.2:.0f}:{loot_scaled_height * 1.2:.0f},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
-                    f"[healthbar]crop={healthbar_crop_string},scale={healthbar_scaled_width * 1.1:.0f}:{healthbar_scaled_height * 1.1:.0f},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                    f"[stats]crop={stats_area_crop_string},scale={stats_scaled_width}:{stats_scaled_height},format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
-                    f"[main_cropped][lootbar_scaled]overlay={loot_overlay_x}:{loot_overlay_y}[t1];"
-                    f"[t1][healthbar_scaled]overlay=-100:{hb_overlay_y}[t2];"
-                    f"[t2][stats_scaled]overlay={stats_overlay_x}:{stats_overlay_y}"
-                )
+                TEAM_LEFT_MARGIN_1440 = 0
+                TEAM_TOP_MARGIN_1440  = 0
+                team_overlay_x = int(round(TEAM_LEFT_MARGIN_1440 * s))
+                team_overlay_y = int(round(TEAM_TOP_MARGIN_1440  * s))
+                if self.show_teammates_overlay:
+                    video_filter_cmd = (
+                        f"split=5[main][lootbar][healthbar][stats][team];"
+                        f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
+                        f"[lootbar]crop={loot_area_crop_string},scale={loot_scaled_width * 1.2:.0f}:{loot_scaled_height * 1.2:.0f},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
+                        f"[healthbar]crop={healthbar_crop_string},scale={healthbar_scaled_width * 1.1:.0f}:{healthbar_scaled_height * 1.1:.0f},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
+                        f"[stats]crop={stats_area_crop_string},scale={stats_scaled_width}:{stats_scaled_height},format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
+                        f"[team]crop={team_crop_string},scale={team_scaled_width}:{team_scaled_height},format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];"
+                        f"[main_cropped][lootbar_scaled]overlay={loot_overlay_x}:{loot_overlay_y}[t1];"
+                        f"[t1][healthbar_scaled]overlay=-100:{hb_overlay_y}[t2];"
+                        f"[t2][stats_scaled]overlay={stats_overlay_x}:{stats_overlay_y}[t3];"
+                        f"[t3][team_scaled]overlay={team_overlay_x}:{team_overlay_y}"
+                    )
+                else:
+                    video_filter_cmd = (
+                        f"split=4[main][lootbar][healthbar][stats];"
+                        f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
+                        f"[lootbar]crop={loot_area_crop_string},scale={loot_scaled_width * 1.2:.0f}:{loot_scaled_height * 1.2:.0f},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
+                        f"[healthbar]crop={healthbar_crop_string},scale={healthbar_scaled_width * 1.1:.0f}:{healthbar_scaled_height * 1.1:.0f},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
+                        f"[stats]crop={stats_area_crop_string},scale={stats_scaled_width}:{stats_scaled_height},format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
+                        f"[main_cropped][lootbar_scaled]overlay={loot_overlay_x}:{loot_overlay_y}[t1];"
+                        f"[t1][healthbar_scaled]overlay=-100:{hb_overlay_y}[t2];"
+                        f"[t2][stats_scaled]overlay={stats_overlay_x}:{stats_overlay_y}"
+                    )
                 self.logger.info(f"Mobile portrait mode: loot={loot_area_crop_string}, health={healthbar_crop_string}, "
-                                f"stats={stats_area_crop_string}, alpha=0.8, hb_up={hb_overlay_up}px, "
-                                f"stats_xy=({stats_overlay_x},{stats_overlay_y})")
+                                 f"stats={stats_area_crop_string}, alpha=0.8, hb_up={hb_overlay_up}px, "
+                                 f"stats_xy=({stats_overlay_x},{stats_overlay_y})")
                 self.status_update_signal.emit("Optimizing for mobile: Applying portrait crop.")
             else:
                 original_width, original_height = map(int, self.original_resolution.split('x'))

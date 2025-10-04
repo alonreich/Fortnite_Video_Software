@@ -2860,3 +2860,742 @@
 2025-10-04 02:19:34 | INFO | FFmpeg: [aac @ 000002cd363b05c0] Qavg: 585.796
 2025-10-04 02:19:34 | INFO | Job SUCCESS | start=0s end=22s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
 2025-10-04 02:19:34 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.03 - 23.42.45.06.Elimination.DVR.mp4' | original_size_bytes=316822130 | new_size_bytes=51910200
+2025-10-04 10:01:12 | INFO | === Application started ===
+2025-10-04 10:05:19 | INFO | === Application started ===
+2025-10-04 10:06:25 | INFO | === Application started ===
+2025-10-04 10:10:32 | INFO | === Application started ===
+2025-10-04 10:10:53 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 10:10:53 | INFO | Audio atempo set to 1.1
+2025-10-04 10:10:53 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4 -ss 0.9090909090909091 -t 1.818181818181818 -c:v h264_nvenc -rc vbr_hq -b:v 225152.00000000003k -maxrate 337728k -bufsize 450304k -c:a aac -b:a 128k -loglevel info -filter_complex split=4[main][lootbar][healthbar][stats];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 10:10:53 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 10:10:53 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 10:10:53 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 10:10:53 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 10:10:53 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 10:10:53 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 10:10:53 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 10:10:53 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 10:10:53 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 10:10:53 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 10:10:53 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 10:10:53 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4':
+2025-10-04 10:10:53 | INFO | FFmpeg: Metadata:
+2025-10-04 10:10:53 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 10:10:53 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 10:10:53 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 10:10:53 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 10:10:53 | INFO | FFmpeg: date            : 2025
+2025-10-04 10:10:53 | INFO | FFmpeg: Duration: 00:00:15.12, start: 0.000000, bitrate: 82857 kb/s
+2025-10-04 10:10:53 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 82649 kb/s, 119.99 fps, 120 tbr, 90k tbn (default)
+2025-10-04 10:10:53 | INFO | FFmpeg: Metadata:
+2025-10-04 10:10:53 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 10:10:53 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 10:10:53 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 10:10:53 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 10:10:53 | INFO | FFmpeg: Metadata:
+2025-10-04 10:10:53 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 10:10:53 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 10:10:53 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 10:10:53 | INFO | FFmpeg: [vist#0:0/h264 @ 000001a1a96e3c80] [dec:h264 @ 000001a1a97b5c80] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 10:10:53 | INFO | FFmpeg: Stream mapping:
+2025-10-04 10:10:53 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 10:10:53 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 10:10:53 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 10:10:53 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 10:10:53 | INFO | FFmpeg: [h264_nvenc @ 000001a1ac26c2c0] Specified rc mode is deprecated.
+2025-10-04 10:10:53 | INFO | FFmpeg: [h264_nvenc @ 000001a1ac26c2c0] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 10:10:53 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4':
+2025-10-04 10:10:53 | INFO | FFmpeg: Metadata:
+2025-10-04 10:10:53 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 10:10:53 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 10:10:53 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 10:10:53 | INFO | FFmpeg: date            : 2025
+2025-10-04 10:10:53 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 10:10:53 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 225152 kb/s, 120 fps, 15360 tbn
+2025-10-04 10:10:53 | INFO | FFmpeg: Metadata:
+2025-10-04 10:10:53 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 10:10:53 | INFO | FFmpeg: Side data:
+2025-10-04 10:10:53 | INFO | FFmpeg: cpb: bitrate max/min/avg: 337728000/0/225152000 buffer size: 450304000 vbv_delay: N/A
+2025-10-04 10:10:53 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 10:10:53 | INFO | FFmpeg: Metadata:
+2025-10-04 10:10:53 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 10:10:53 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 10:10:53 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 10:10:53 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 10:10:54 | INFO | FFmpeg: frame=  157 fps=152 q=12.0 size=   17664KiB time=00:00:00.85 bitrate=169574.9kbits/s dup=0 drop=16 speed=0.828x
+2025-10-04 10:10:54 | INFO | FFmpeg: [out#0/mp4 @ 000001a1a973ea80] video:46921KiB audio:29KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.012640%
+2025-10-04 10:10:54 | INFO | FFmpeg: frame=  219 fps=184 q=13.0 Lsize=   46956KiB time=00:00:01.80 bitrate=213702.6kbits/s dup=0 drop=21 speed=1.51x
+2025-10-04 10:10:54 | INFO | FFmpeg: [aac @ 000001a1abd7e040] Qavg: 1047.324
+2025-10-04 10:10:54 | INFO | Job SUCCESS | start=1s end=3s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 10:10:54 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4' | original_size_bytes=156573556 | new_size_bytes=48083090
+2025-10-04 10:23:22 | INFO | === Application started ===
+2025-10-04 10:24:33 | INFO | === Application started ===
+2025-10-04 10:26:20 | INFO | === Application started ===
+2025-10-04 10:28:31 | INFO | === Application started ===
+2025-10-04 10:29:06 | INFO | === Application started ===
+2025-10-04 10:29:26 | INFO | === Application started ===
+2025-10-04 10:32:52 | INFO | === Application started ===
+2025-10-04 10:34:55 | INFO | === Application started ===
+2025-10-04 10:38:08 | INFO | === Application started ===
+2025-10-04 10:38:47 | INFO | === Application started ===
+2025-10-04 10:39:04 | INFO | === Application started ===
+2025-10-04 10:40:04 | INFO | === Application started ===
+2025-10-04 10:42:19 | INFO | === Application started ===
+2025-10-04 11:05:45 | INFO | === Application started ===
+2025-10-04 11:05:57 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 11:05:57 | INFO | Audio atempo set to 1.1
+2025-10-04 11:05:57 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:/Users/alon/AppData/Local/Temp/Highlights/Fortnite/Fortnite 2025.10.03 - 23.39.01.03.Down.DVR.mp4 -ss 0.0 -t 2.727272727272727 -c:v h264_nvenc -rc vbr_hq -b:v 150058.6666666667k -maxrate 225088k -bufsize 300117k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=420:110:36:60,scale=462:121,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=24:24,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:05:57 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 11:05:57 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 11:05:57 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 11:05:57 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 11:05:57 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 11:05:57 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 11:05:57 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 11:05:57 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 11:05:57 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 11:05:57 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 11:05:57 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 11:05:57 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:/Users/alon/AppData/Local/Temp/Highlights/Fortnite/Fortnite 2025.10.03 - 23.39.01.03.Down.DVR.mp4':
+2025-10-04 11:05:57 | INFO | FFmpeg: Metadata:
+2025-10-04 11:05:57 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:05:57 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:05:57 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:05:57 | INFO | FFmpeg: creation_time   : 2025-10-03T20:39:01.000000Z
+2025-10-04 11:05:57 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:05:57 | INFO | FFmpeg: Duration: 00:00:20.05, start: 0.000000, bitrate: 105654 kb/s
+2025-10-04 11:05:57 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 105446 kb/s, 120.01 fps, 120 tbr, 90k tbn (default)
+2025-10-04 11:05:57 | INFO | FFmpeg: Metadata:
+2025-10-04 11:05:57 | INFO | FFmpeg: creation_time   : 2025-10-03T20:39:01.000000Z
+2025-10-04 11:05:57 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 11:05:57 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:05:57 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 11:05:57 | INFO | FFmpeg: Metadata:
+2025-10-04 11:05:57 | INFO | FFmpeg: creation_time   : 2025-10-03T20:39:01.000000Z
+2025-10-04 11:05:57 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:05:57 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:05:57 | INFO | FFmpeg: [vist#0:0/h264 @ 000002a430bb4d00] [dec:h264 @ 000002a432a180c0] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 11:05:57 | INFO | FFmpeg: Stream mapping:
+2025-10-04 11:05:57 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 11:05:57 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 11:05:57 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 11:05:57 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 11:05:57 | INFO | FFmpeg: [h264_nvenc @ 000002a4330d5880] Specified rc mode is deprecated.
+2025-10-04 11:05:57 | INFO | FFmpeg: [h264_nvenc @ 000002a4330d5880] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 11:05:58 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4':
+2025-10-04 11:05:58 | INFO | FFmpeg: Metadata:
+2025-10-04 11:05:58 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:05:58 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:05:58 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:05:58 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:05:58 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 11:05:58 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 150058 kb/s, 120 fps, 15360 tbn
+2025-10-04 11:05:58 | INFO | FFmpeg: Metadata:
+2025-10-04 11:05:58 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 11:05:58 | INFO | FFmpeg: Side data:
+2025-10-04 11:05:58 | INFO | FFmpeg: cpb: bitrate max/min/avg: 225088000/0/150058667 buffer size: 300117000 vbv_delay: N/A
+2025-10-04 11:05:58 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 11:05:58 | INFO | FFmpeg: Metadata:
+2025-10-04 11:05:58 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 11:05:58 | INFO | FFmpeg: creation_time   : 2025-10-03T20:39:01.000000Z
+2025-10-04 11:05:58 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:05:58 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:05:58 | INFO | FFmpeg: frame=   73 fps=0.0 q=19.0 size=   16384KiB time=00:00:00.58 bitrate=230088.3kbits/s dup=0 drop=7 speed=1.11x
+2025-10-04 11:05:59 | INFO | FFmpeg: frame=  223 fps=216 q=19.0 size=   42752KiB time=00:00:01.79 bitrate=195437.9kbits/s dup=0 drop=22 speed=1.74x
+2025-10-04 11:05:59 | INFO | FFmpeg: [out#0/mp4 @ 000002a430b2c580] video:60329KiB audio:42KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.013467%
+2025-10-04 11:05:59 | INFO | FFmpeg: frame=  328 fps=242 q=16.0 Lsize=   60379KiB time=00:00:02.70 bitrate=183194.9kbits/s dup=0 drop=32 speed=1.99x
+2025-10-04 11:05:59 | INFO | FFmpeg: [aac @ 000002a433a23a40] Qavg: 247.595
+2025-10-04 11:05:59 | INFO | Job SUCCESS | start=0s end=3s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:05:59 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.03 - 23.39.01.03.Down.DVR.mp4' | original_size_bytes=264781816 | new_size_bytes=61828283
+2025-10-04 11:14:48 | INFO | === Application started ===
+2025-10-04 11:14:53 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 11:14:53 | INFO | Audio atempo set to 1.1
+2025-10-04 11:14:53 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4 -ss 0.0 -t 1.8181818181818181 -c:v h264_nvenc -rc vbr_hq -b:v 225152.0k -maxrate 337728k -bufsize 450304k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=210:170:56:0,scale=231:187,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:14:53 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 11:14:53 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 11:14:53 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 11:14:53 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 11:14:53 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 11:14:53 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 11:14:53 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 11:14:53 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 11:14:53 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 11:14:53 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 11:14:53 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 11:14:53 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4':
+2025-10-04 11:14:53 | INFO | FFmpeg: Metadata:
+2025-10-04 11:14:53 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:14:53 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:14:53 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:14:53 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:14:53 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:14:53 | INFO | FFmpeg: Duration: 00:00:15.12, start: 0.000000, bitrate: 82857 kb/s
+2025-10-04 11:14:53 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 82649 kb/s, 119.99 fps, 120 tbr, 90k tbn (default)
+2025-10-04 11:14:53 | INFO | FFmpeg: Metadata:
+2025-10-04 11:14:53 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:14:53 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 11:14:53 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:14:53 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 11:14:53 | INFO | FFmpeg: Metadata:
+2025-10-04 11:14:53 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:14:53 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:14:53 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:14:54 | INFO | FFmpeg: [vist#0:0/h264 @ 00000194f797f700] [dec:h264 @ 00000194f7a44ac0] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 11:14:54 | INFO | FFmpeg: Stream mapping:
+2025-10-04 11:14:54 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 11:14:54 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 11:14:54 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 11:14:54 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 11:14:54 | INFO | FFmpeg: [h264_nvenc @ 00000194fa5ec2c0] Specified rc mode is deprecated.
+2025-10-04 11:14:54 | INFO | FFmpeg: [h264_nvenc @ 00000194fa5ec2c0] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 11:14:54 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4':
+2025-10-04 11:14:54 | INFO | FFmpeg: Metadata:
+2025-10-04 11:14:54 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:14:54 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:14:54 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:14:54 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:14:54 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 11:14:54 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 225152 kb/s, 120 fps, 15360 tbn
+2025-10-04 11:14:54 | INFO | FFmpeg: Metadata:
+2025-10-04 11:14:54 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 11:14:54 | INFO | FFmpeg: Side data:
+2025-10-04 11:14:54 | INFO | FFmpeg: cpb: bitrate max/min/avg: 337728000/0/225152000 buffer size: 450304000 vbv_delay: N/A
+2025-10-04 11:14:54 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 11:14:54 | INFO | FFmpeg: Metadata:
+2025-10-04 11:14:54 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 11:14:54 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:14:54 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:14:54 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:14:55 | INFO | FFmpeg: frame=   74 fps=0.0 q=10.0 size=   10752KiB time=00:00:00.59 bitrate=148868.8kbits/s dup=0 drop=7 speed=1.14x
+2025-10-04 11:14:55 | INFO | FFmpeg: [out#0/mp4 @ 00000194f79dfb00] video:39373KiB audio:30KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.015062%
+2025-10-04 11:14:55 | INFO | FFmpeg: frame=  219 fps=0.0 q=11.0 Lsize=   39408KiB time=00:00:01.80 bitrate=179350.8kbits/s dup=0 drop=21 speed=1.86x
+2025-10-04 11:14:55 | INFO | FFmpeg: [aac @ 00000194f7a493c0] Qavg: 2558.305
+2025-10-04 11:14:55 | INFO | Job SUCCESS | start=0s end=2s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:14:55 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4' | original_size_bytes=156573556 | new_size_bytes=40353931
+2025-10-04 11:42:58 | INFO | === Application started ===
+2025-10-04 11:43:07 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 11:43:07 | INFO | Audio atempo set to 1.1
+2025-10-04 11:43:07 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4 -ss 0.0 -t 2.727272727272727 -c:v h264_nvenc -rc vbr_hq -b:v 150058.6666666667k -maxrate 225088k -bufsize 300117k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=180:170:66:0,scale=238:224,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4
+2025-10-04 11:43:07 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 11:43:07 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 11:43:07 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 11:43:07 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 11:43:07 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 11:43:07 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 11:43:07 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 11:43:07 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 11:43:07 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 11:43:07 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 11:43:07 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 11:43:07 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4':
+2025-10-04 11:43:07 | INFO | FFmpeg: Metadata:
+2025-10-04 11:43:07 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:43:07 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:43:07 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:43:07 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:43:07 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:43:07 | INFO | FFmpeg: Duration: 00:00:15.12, start: 0.000000, bitrate: 82857 kb/s
+2025-10-04 11:43:07 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 82649 kb/s, 119.99 fps, 120 tbr, 90k tbn (default)
+2025-10-04 11:43:07 | INFO | FFmpeg: Metadata:
+2025-10-04 11:43:07 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:43:07 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 11:43:07 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:43:07 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 11:43:07 | INFO | FFmpeg: Metadata:
+2025-10-04 11:43:07 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:43:07 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:43:07 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:43:07 | INFO | FFmpeg: [vist#0:0/h264 @ 0000017893282740] [dec:h264 @ 00000178951a7940] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 11:43:07 | INFO | FFmpeg: Stream mapping:
+2025-10-04 11:43:07 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 11:43:07 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 11:43:07 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 11:43:07 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 11:43:07 | INFO | FFmpeg: [h264_nvenc @ 00000178951b81c0] Specified rc mode is deprecated.
+2025-10-04 11:43:07 | INFO | FFmpeg: [h264_nvenc @ 00000178951b81c0] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 11:43:08 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4':
+2025-10-04 11:43:08 | INFO | FFmpeg: Metadata:
+2025-10-04 11:43:08 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:43:08 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:43:08 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:43:08 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:43:08 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 11:43:08 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 150058 kb/s, 120 fps, 15360 tbn
+2025-10-04 11:43:08 | INFO | FFmpeg: Metadata:
+2025-10-04 11:43:08 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 11:43:08 | INFO | FFmpeg: Side data:
+2025-10-04 11:43:08 | INFO | FFmpeg: cpb: bitrate max/min/avg: 225088000/0/150058667 buffer size: 300117000 vbv_delay: N/A
+2025-10-04 11:43:08 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 11:43:08 | INFO | FFmpeg: Metadata:
+2025-10-04 11:43:08 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 11:43:08 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:43:08 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:43:08 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:43:08 | INFO | FFmpeg: frame=   75 fps=0.0 q=13.0 size=   10240KiB time=00:00:00.60 bitrate=139810.8kbits/s dup=0 drop=8 speed=1.14x
+2025-10-04 11:43:08 | INFO | FFmpeg: frame=  229 fps=222 q=15.0 size=   33280KiB time=00:00:01.77 bitrate=153970.3kbits/s dup=0 drop=23 speed=1.72x
+2025-10-04 11:43:08 | INFO | FFmpeg: [out#0/mp4 @ 00000178932e0800] video:56701KiB audio:43KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.014327%
+2025-10-04 11:43:08 | INFO | FFmpeg: frame=  328 fps=247 q=14.0 Lsize=   56752KiB time=00:00:02.70 bitrate=171660.8kbits/s dup=0 drop=33 speed=2.04x
+2025-10-04 11:43:09 | INFO | FFmpeg: [aac @ 0000017895e0c2c0] Qavg: 1517.329
+2025-10-04 11:43:09 | INFO | Job SUCCESS | start=0s end=3s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4
+2025-10-04 11:43:09 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4' | original_size_bytes=156573556 | new_size_bytes=58114325
+2025-10-04 11:52:09 | INFO | === Application started ===
+2025-10-04 11:52:15 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 11:52:15 | INFO | Audio atempo set to 1.1
+2025-10-04 11:52:15 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4 -ss 0.0 -t 2.727272727272727 -c:v h264_nvenc -rc vbr_hq -b:v 150058.6666666667k -maxrate 225088k -bufsize 300117k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=160:158:74:12,scale=211:209,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:52:15 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 11:52:15 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 11:52:15 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 11:52:15 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 11:52:15 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 11:52:15 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 11:52:15 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 11:52:15 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 11:52:15 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 11:52:15 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 11:52:15 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 11:52:15 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4':
+2025-10-04 11:52:15 | INFO | FFmpeg: Metadata:
+2025-10-04 11:52:15 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:52:15 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:52:15 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:52:15 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:52:15 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:52:15 | INFO | FFmpeg: Duration: 00:00:15.12, start: 0.000000, bitrate: 82857 kb/s
+2025-10-04 11:52:15 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 82649 kb/s, 119.99 fps, 120 tbr, 90k tbn (default)
+2025-10-04 11:52:15 | INFO | FFmpeg: Metadata:
+2025-10-04 11:52:15 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:52:15 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 11:52:15 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:52:15 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 11:52:15 | INFO | FFmpeg: Metadata:
+2025-10-04 11:52:15 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:52:15 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:52:15 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:52:16 | INFO | FFmpeg: [vist#0:0/h264 @ 000001f68dcdc580] [dec:h264 @ 000001f68dda6740] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 11:52:16 | INFO | FFmpeg: Stream mapping:
+2025-10-04 11:52:16 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 11:52:16 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 11:52:16 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 11:52:16 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 11:52:16 | INFO | FFmpeg: [h264_nvenc @ 000001f68fd1ab80] Specified rc mode is deprecated.
+2025-10-04 11:52:16 | INFO | FFmpeg: [h264_nvenc @ 000001f68fd1ab80] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 11:52:16 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4':
+2025-10-04 11:52:16 | INFO | FFmpeg: Metadata:
+2025-10-04 11:52:16 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:52:16 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:52:16 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:52:16 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:52:16 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 11:52:16 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 150058 kb/s, 120 fps, 15360 tbn
+2025-10-04 11:52:16 | INFO | FFmpeg: Metadata:
+2025-10-04 11:52:16 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 11:52:16 | INFO | FFmpeg: Side data:
+2025-10-04 11:52:16 | INFO | FFmpeg: cpb: bitrate max/min/avg: 225088000/0/150058667 buffer size: 300117000 vbv_delay: N/A
+2025-10-04 11:52:16 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 11:52:16 | INFO | FFmpeg: Metadata:
+2025-10-04 11:52:16 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 11:52:16 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:52:16 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:52:16 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:52:17 | INFO | FFmpeg: frame=   74 fps=0.0 q=11.0 size=    9984KiB time=00:00:00.59 bitrate=138235.4kbits/s dup=0 drop=7 speed=1.16x
+2025-10-04 11:52:17 | INFO | FFmpeg: frame=  231 fps=226 q=13.0 size=   33024KiB time=00:00:01.77 bitrate=152785.9kbits/s dup=0 drop=23 speed=1.73x
+2025-10-04 11:52:17 | INFO | FFmpeg: [out#0/mp4 @ 000001f68dd4a480] video:56573KiB audio:43KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.014360%
+2025-10-04 11:52:17 | INFO | FFmpeg: frame=  328 fps=250 q=14.0 Lsize=   56625KiB time=00:00:02.70 bitrate=171275.4kbits/s dup=0 drop=33 speed=2.06x
+2025-10-04 11:52:17 | INFO | FFmpeg: [aac @ 000001f6908fb840] Qavg: 1517.329
+2025-10-04 11:52:17 | INFO | Job SUCCESS | start=0s end=3s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:52:17 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4' | original_size_bytes=156573556 | new_size_bytes=57983848
+2025-10-04 11:56:27 | INFO | === Application started ===
+2025-10-04 11:56:34 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 11:56:34 | INFO | Audio atempo set to 1.1
+2025-10-04 11:56:34 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4 -ss 0.0 -t 3.6363636363636362 -c:v h264_nvenc -rc vbr_hq -b:v 112512.00000000001k -maxrate 168768k -bufsize 225024k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=160:158:74:5,scale=211:209,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4
+2025-10-04 11:56:34 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 11:56:34 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 11:56:34 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 11:56:34 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 11:56:34 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 11:56:34 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 11:56:34 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 11:56:34 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 11:56:34 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 11:56:34 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 11:56:34 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 11:56:35 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4':
+2025-10-04 11:56:35 | INFO | FFmpeg: Metadata:
+2025-10-04 11:56:35 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:56:35 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:56:35 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:56:35 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:56:35 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:56:35 | INFO | FFmpeg: Duration: 00:00:15.12, start: 0.000000, bitrate: 82857 kb/s
+2025-10-04 11:56:35 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 82649 kb/s, 119.99 fps, 120 tbr, 90k tbn (default)
+2025-10-04 11:56:35 | INFO | FFmpeg: Metadata:
+2025-10-04 11:56:35 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:56:35 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 11:56:35 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:56:35 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 11:56:35 | INFO | FFmpeg: Metadata:
+2025-10-04 11:56:35 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:56:35 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:56:35 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:56:35 | INFO | FFmpeg: [vist#0:0/h264 @ 000002302701b140] [dec:h264 @ 0000023028274c40] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 11:56:35 | INFO | FFmpeg: Stream mapping:
+2025-10-04 11:56:35 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 11:56:35 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 11:56:35 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 11:56:35 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 11:56:35 | INFO | FFmpeg: [h264_nvenc @ 0000023027018d80] Specified rc mode is deprecated.
+2025-10-04 11:56:35 | INFO | FFmpeg: [h264_nvenc @ 0000023027018d80] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 11:56:35 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4':
+2025-10-04 11:56:35 | INFO | FFmpeg: Metadata:
+2025-10-04 11:56:35 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:56:35 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:56:35 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:56:35 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:56:35 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 11:56:35 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 112512 kb/s, 120 fps, 15360 tbn
+2025-10-04 11:56:35 | INFO | FFmpeg: Metadata:
+2025-10-04 11:56:35 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 11:56:35 | INFO | FFmpeg: Side data:
+2025-10-04 11:56:35 | INFO | FFmpeg: cpb: bitrate max/min/avg: 168768000/0/112512000 buffer size: 225024000 vbv_delay: N/A
+2025-10-04 11:56:35 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 11:56:35 | INFO | FFmpeg: Metadata:
+2025-10-04 11:56:35 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 11:56:35 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:56:35 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:56:35 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:56:36 | INFO | FFmpeg: frame=   76 fps=0.0 q=16.0 size=   10240KiB time=00:00:00.60 bitrate=137895.6kbits/s dup=0 drop=8 speed=1.18x
+2025-10-04 11:56:36 | INFO | FFmpeg: frame=  233 fps=227 q=18.0 size=   28928KiB time=00:00:01.77 bitrate=133835.8kbits/s dup=0 drop=23 speed=1.72x
+2025-10-04 11:56:36 | INFO | FFmpeg: frame=  388 fps=252 q=15.0 size=   45824KiB time=00:00:02.68 bitrate=139654.2kbits/s dup=0 drop=39 speed=1.74x
+2025-10-04 11:56:36 | INFO | FFmpeg: [out#0/mp4 @ 0000023024f90640] video:58828KiB audio:58KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.017604%
+2025-10-04 11:56:36 | INFO | FFmpeg: frame=  437 fps=261 q=18.0 Lsize=   58897KiB time=00:00:03.61 bitrate=133406.1kbits/s dup=0 drop=44 speed=2.16x
+2025-10-04 11:56:36 | INFO | FFmpeg: [aac @ 000002302701dc00] Qavg: 1340.474
+2025-10-04 11:56:36 | INFO | Job SUCCESS | start=0s end=4s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4
+2025-10-04 11:56:36 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4' | original_size_bytes=156573556 | new_size_bytes=60310663
+2025-10-04 11:57:02 | INFO | === Application started ===
+2025-10-04 11:57:07 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 11:57:07 | INFO | Audio atempo set to 1.1
+2025-10-04 11:57:07 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4 -ss 0.0 -t 1.8181818181818181 -c:v h264_nvenc -rc vbr_hq -b:v 225152.0k -maxrate 337728k -bufsize 450304k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=160:158:74:20,scale=211:209,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:57:07 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 11:57:07 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 11:57:07 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 11:57:07 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 11:57:07 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 11:57:07 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 11:57:07 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 11:57:07 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 11:57:07 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 11:57:07 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 11:57:07 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 11:57:07 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4':
+2025-10-04 11:57:07 | INFO | FFmpeg: Metadata:
+2025-10-04 11:57:07 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:57:07 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:57:07 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:57:07 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:57:07 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:57:07 | INFO | FFmpeg: Duration: 00:00:15.12, start: 0.000000, bitrate: 82857 kb/s
+2025-10-04 11:57:07 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 82649 kb/s, 119.99 fps, 120 tbr, 90k tbn (default)
+2025-10-04 11:57:07 | INFO | FFmpeg: Metadata:
+2025-10-04 11:57:07 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:57:07 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 11:57:07 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:57:07 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 11:57:07 | INFO | FFmpeg: Metadata:
+2025-10-04 11:57:07 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:57:07 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:57:07 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:57:07 | INFO | FFmpeg: [vist#0:0/h264 @ 0000025e153aa140] [dec:h264 @ 0000025e15469f80] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 11:57:07 | INFO | FFmpeg: Stream mapping:
+2025-10-04 11:57:07 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 11:57:07 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 11:57:07 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 11:57:07 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 11:57:07 | INFO | FFmpeg: [h264_nvenc @ 0000025e15f6c040] Specified rc mode is deprecated.
+2025-10-04 11:57:07 | INFO | FFmpeg: [h264_nvenc @ 0000025e15f6c040] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 11:57:08 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4':
+2025-10-04 11:57:08 | INFO | FFmpeg: Metadata:
+2025-10-04 11:57:08 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:57:08 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:57:08 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:57:08 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:57:08 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 11:57:08 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 225152 kb/s, 120 fps, 15360 tbn
+2025-10-04 11:57:08 | INFO | FFmpeg: Metadata:
+2025-10-04 11:57:08 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 11:57:08 | INFO | FFmpeg: Side data:
+2025-10-04 11:57:08 | INFO | FFmpeg: cpb: bitrate max/min/avg: 337728000/0/225152000 buffer size: 450304000 vbv_delay: N/A
+2025-10-04 11:57:08 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 11:57:08 | INFO | FFmpeg: Metadata:
+2025-10-04 11:57:08 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 11:57:08 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:57:08 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:57:08 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:57:08 | INFO | FFmpeg: frame=   71 fps=0.0 q=12.0 size=    3328KiB time=00:00:00.32 bitrate=85198.0kbits/s dup=0 drop=7 speed=0.632x
+2025-10-04 11:57:08 | INFO | FFmpeg: [out#0/mp4 @ 0000025e134ad780] video:39145KiB audio:30KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.015149%
+2025-10-04 11:57:08 | INFO | FFmpeg: frame=  219 fps=0.0 q=10.0 Lsize=   39180KiB time=00:00:01.80 bitrate=178313.1kbits/s dup=0 drop=21 speed=1.86x
+2025-10-04 11:57:08 | INFO | FFmpeg: [aac @ 0000025e16332040] Qavg: 2558.305
+2025-10-04 11:57:08 | INFO | Job SUCCESS | start=0s end=2s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:57:08 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4' | original_size_bytes=156573556 | new_size_bytes=40120453
+2025-10-04 11:58:55 | INFO | === Application started ===
+2025-10-04 11:59:01 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 11:59:01 | INFO | Audio atempo set to 1.1
+2025-10-04 11:59:01 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4 -ss 0.0 -t 2.727272727272727 -c:v h264_nvenc -rc vbr_hq -b:v 150058.6666666667k -maxrate 225088k -bufsize 300117k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=160:158:74:22,scale=211:209,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4
+2025-10-04 11:59:01 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 11:59:01 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 11:59:01 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 11:59:01 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 11:59:01 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 11:59:01 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 11:59:01 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 11:59:01 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 11:59:01 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 11:59:01 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 11:59:01 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 11:59:01 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4':
+2025-10-04 11:59:01 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:01 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:59:01 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:59:01 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:59:01 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:59:01 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:59:01 | INFO | FFmpeg: Duration: 00:00:15.12, start: 0.000000, bitrate: 82857 kb/s
+2025-10-04 11:59:01 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 82649 kb/s, 119.99 fps, 120 tbr, 90k tbn (default)
+2025-10-04 11:59:01 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:01 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:59:01 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 11:59:01 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:59:01 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 11:59:01 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:01 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:59:01 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:59:01 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:59:01 | INFO | FFmpeg: [vist#0:0/h264 @ 00000293bb879900] [dec:h264 @ 00000293bb8828c0] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 11:59:01 | INFO | FFmpeg: Stream mapping:
+2025-10-04 11:59:01 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 11:59:01 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 11:59:01 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 11:59:01 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 11:59:02 | INFO | FFmpeg: [h264_nvenc @ 00000293be35c2c0] Specified rc mode is deprecated.
+2025-10-04 11:59:02 | INFO | FFmpeg: [h264_nvenc @ 00000293be35c2c0] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 11:59:02 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4':
+2025-10-04 11:59:02 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:02 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:59:02 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:59:02 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:59:02 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:59:02 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 11:59:02 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 150058 kb/s, 120 fps, 15360 tbn
+2025-10-04 11:59:02 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:02 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 11:59:02 | INFO | FFmpeg: Side data:
+2025-10-04 11:59:02 | INFO | FFmpeg: cpb: bitrate max/min/avg: 225088000/0/150058667 buffer size: 300117000 vbv_delay: N/A
+2025-10-04 11:59:02 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 11:59:02 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:02 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 11:59:02 | INFO | FFmpeg: creation_time   : 2025-10-03T21:49:42.000000Z
+2025-10-04 11:59:02 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:59:02 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:59:02 | INFO | FFmpeg: frame=   76 fps=0.0 q=14.0 size=   10496KiB time=00:00:00.60 bitrate=141343.0kbits/s dup=0 drop=8 speed=1.17x
+2025-10-04 11:59:03 | INFO | FFmpeg: frame=  233 fps=226 q=15.0 size=   33024KiB time=00:00:01.77 bitrate=152785.9kbits/s dup=0 drop=23 speed=1.71x
+2025-10-04 11:59:03 | INFO | FFmpeg: [out#0/mp4 @ 00000293bb810f80] video:56557KiB audio:43KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.014364%
+2025-10-04 11:59:03 | INFO | FFmpeg: frame=  328 fps=249 q=14.0 Lsize=   56608KiB time=00:00:02.70 bitrate=171224.8kbits/s dup=0 drop=33 speed=2.05x
+2025-10-04 11:59:03 | INFO | FFmpeg: [aac @ 00000293be36bac0] Qavg: 1517.329
+2025-10-04 11:59:03 | INFO | Job SUCCESS | start=0s end=3s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4
+2025-10-04 11:59:03 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.04 - 00.49.37.45.Eliminated.DVR.mp4' | original_size_bytes=156573556 | new_size_bytes=57966730
+2025-10-04 11:59:40 | INFO | === Application started ===
+2025-10-04 11:59:45 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 11:59:45 | INFO | Audio atempo set to 1.1
+2025-10-04 11:59:45 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.03 - 23.39.07.04.Double Elimination.DVR.mp4 -ss 0.0 -t 1.8181818181818181 -c:v h264_nvenc -rc vbr_hq -b:v 225152.0k -maxrate 337728k -bufsize 450304k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=160:158:74:25,scale=211:209,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:59:45 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 11:59:45 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 11:59:45 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 11:59:45 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 11:59:45 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 11:59:45 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 11:59:45 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 11:59:45 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 11:59:45 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 11:59:45 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 11:59:45 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 11:59:45 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.03 - 23.39.07.04.Double Elimination.DVR.mp4':
+2025-10-04 11:59:45 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:45 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:59:45 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:59:45 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:59:45 | INFO | FFmpeg: creation_time   : 2025-10-03T20:39:07.000000Z
+2025-10-04 11:59:45 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:59:45 | INFO | FFmpeg: Duration: 00:00:20.22, start: 0.000000, bitrate: 104600 kb/s
+2025-10-04 11:59:45 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 104392 kb/s, 120.01 fps, 120 tbr, 90k tbn (default)
+2025-10-04 11:59:45 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:45 | INFO | FFmpeg: creation_time   : 2025-10-03T20:39:07.000000Z
+2025-10-04 11:59:45 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 11:59:45 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:59:45 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 11:59:45 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:45 | INFO | FFmpeg: creation_time   : 2025-10-03T20:39:07.000000Z
+2025-10-04 11:59:45 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:59:45 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:59:46 | INFO | FFmpeg: [vist#0:0/h264 @ 0000027a248f4880] [dec:h264 @ 0000027a23928180] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 11:59:46 | INFO | FFmpeg: Stream mapping:
+2025-10-04 11:59:46 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 11:59:46 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 11:59:46 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 11:59:46 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 11:59:46 | INFO | FFmpeg: [h264_nvenc @ 0000027a257f8040] Specified rc mode is deprecated.
+2025-10-04 11:59:46 | INFO | FFmpeg: [h264_nvenc @ 0000027a257f8040] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 11:59:46 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4':
+2025-10-04 11:59:46 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:46 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 11:59:46 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 11:59:46 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 11:59:46 | INFO | FFmpeg: date            : 2025
+2025-10-04 11:59:46 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 11:59:46 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 225152 kb/s, 120 fps, 15360 tbn
+2025-10-04 11:59:46 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:46 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 11:59:46 | INFO | FFmpeg: Side data:
+2025-10-04 11:59:46 | INFO | FFmpeg: cpb: bitrate max/min/avg: 337728000/0/225152000 buffer size: 450304000 vbv_delay: N/A
+2025-10-04 11:59:46 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 11:59:46 | INFO | FFmpeg: Metadata:
+2025-10-04 11:59:46 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 11:59:46 | INFO | FFmpeg: creation_time   : 2025-10-03T20:39:07.000000Z
+2025-10-04 11:59:46 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 11:59:46 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 11:59:46 | INFO | FFmpeg: frame=   74 fps=0.0 q=11.0 size=   17920KiB time=00:00:00.59 bitrate=248114.3kbits/s dup=0 drop=7 speed=1.15x
+2025-10-04 11:59:46 | INFO | FFmpeg: [out#0/mp4 @ 0000027a219a09c0] video:49804KiB audio:28KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.011909%
+2025-10-04 11:59:46 | INFO | FFmpeg: frame=  219 fps=0.0 q=13.0 Lsize=   49839KiB time=00:00:01.80 bitrate=226821.4kbits/s dup=0 drop=21 speed=1.85x
+2025-10-04 11:59:47 | INFO | FFmpeg: [aac @ 0000027a23929140] Qavg: 972.605
+2025-10-04 11:59:47 | INFO | Job SUCCESS | start=0s end=2s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-1.mp4
+2025-10-04 11:59:47 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.03 - 23.39.07.04.Double Elimination.DVR.mp4' | original_size_bytes=264425642 | new_size_bytes=51034807
+2025-10-04 12:01:48 | INFO | === Application started ===
+2025-10-04 12:01:54 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 12:01:54 | INFO | Audio atempo set to 1.1
+2025-10-04 12:01:54 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.03 - 23.43.22.08.Double Elimination.DVR.mp4 -ss 0.0 -t 2.727272727272727 -c:v h264_nvenc -rc vbr_hq -b:v 150058.6666666667k -maxrate 225088k -bufsize 300117k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=160:165:74:26,scale=211:218,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4
+2025-10-04 12:01:54 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 12:01:54 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 12:01:54 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 12:01:54 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 12:01:54 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 12:01:54 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 12:01:54 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 12:01:54 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 12:01:54 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 12:01:54 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 12:01:54 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 12:01:54 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.03 - 23.43.22.08.Double Elimination.DVR.mp4':
+2025-10-04 12:01:54 | INFO | FFmpeg: Metadata:
+2025-10-04 12:01:54 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 12:01:54 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 12:01:54 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 12:01:54 | INFO | FFmpeg: creation_time   : 2025-10-03T20:43:22.000000Z
+2025-10-04 12:01:54 | INFO | FFmpeg: date            : 2025
+2025-10-04 12:01:54 | INFO | FFmpeg: Duration: 00:00:20.04, start: 0.000000, bitrate: 94788 kb/s
+2025-10-04 12:01:54 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 94581 kb/s, 120 fps, 120 tbr, 90k tbn (default)
+2025-10-04 12:01:54 | INFO | FFmpeg: Metadata:
+2025-10-04 12:01:54 | INFO | FFmpeg: creation_time   : 2025-10-03T20:43:22.000000Z
+2025-10-04 12:01:54 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 12:01:54 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 12:01:54 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 12:01:54 | INFO | FFmpeg: Metadata:
+2025-10-04 12:01:54 | INFO | FFmpeg: creation_time   : 2025-10-03T20:43:22.000000Z
+2025-10-04 12:01:54 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 12:01:54 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 12:01:54 | INFO | FFmpeg: [vist#0:0/h264 @ 00000233b6a598c0] [dec:h264 @ 00000233b8968a00] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 12:01:54 | INFO | FFmpeg: Stream mapping:
+2025-10-04 12:01:54 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 12:01:54 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 12:01:54 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 12:01:54 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 12:01:54 | INFO | FFmpeg: [h264_nvenc @ 00000233b6a5ad80] Specified rc mode is deprecated.
+2025-10-04 12:01:54 | INFO | FFmpeg: [h264_nvenc @ 00000233b6a5ad80] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 12:01:55 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4':
+2025-10-04 12:01:55 | INFO | FFmpeg: Metadata:
+2025-10-04 12:01:55 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 12:01:55 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 12:01:55 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 12:01:55 | INFO | FFmpeg: date            : 2025
+2025-10-04 12:01:55 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 12:01:55 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 150058 kb/s, 120 fps, 15360 tbn
+2025-10-04 12:01:55 | INFO | FFmpeg: Metadata:
+2025-10-04 12:01:55 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 12:01:55 | INFO | FFmpeg: Side data:
+2025-10-04 12:01:55 | INFO | FFmpeg: cpb: bitrate max/min/avg: 225088000/0/150058667 buffer size: 300117000 vbv_delay: N/A
+2025-10-04 12:01:55 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 12:01:55 | INFO | FFmpeg: Metadata:
+2025-10-04 12:01:55 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 12:01:55 | INFO | FFmpeg: creation_time   : 2025-10-03T20:43:22.000000Z
+2025-10-04 12:01:55 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 12:01:55 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 12:01:55 | INFO | FFmpeg: frame=   75 fps=0.0 q=15.0 size=   15104KiB time=00:00:00.60 bitrate=206220.6kbits/s dup=0 drop=8 speed=1.17x
+2025-10-04 12:01:56 | INFO | FFmpeg: frame=  231 fps=224 q=16.0 size=   38400KiB time=00:00:01.77 bitrate=177658.0kbits/s dup=0 drop=23 speed=1.72x
+2025-10-04 12:01:56 | INFO | FFmpeg: [out#0/mp4 @ 00000233b69f16c0] video:57047KiB audio:43KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.014241%
+2025-10-04 12:01:56 | INFO | FFmpeg: frame=  328 fps=248 q=14.0 Lsize=   57097KiB time=00:00:02.70 bitrate=172704.6kbits/s dup=0 drop=33 speed=2.05x
+2025-10-04 12:01:56 | INFO | FFmpeg: [aac @ 00000233b6a5c580] Qavg: 297.909
+2025-10-04 12:01:56 | INFO | Job SUCCESS | start=0s end=3s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-2.mp4
+2025-10-04 12:01:56 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.03 - 23.43.22.08.Double Elimination.DVR.mp4' | original_size_bytes=237458348 | new_size_bytes=58467687
+2025-10-04 12:02:41 | INFO | === Application started ===
+2025-10-04 12:02:46 | INFO | Mobile portrait mode: loot=440:133:2160:1288, health=370:65:60:1317, stats=280:31:2264:270, alpha=0.8, hb_up=14px, stats_xy=(323,1732)
+2025-10-04 12:02:46 | INFO | Audio atempo set to 1.1
+2025-10-04 12:02:46 | INFO | FFmpeg CMD: C:\Users\alon\Desktop\Video_Editing_Software\ffmpeg.exe -y -hwaccel auto -i C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.03 - 23.43.22.08.Double Elimination.DVR.mp4 -ss 0.0 -t 2.727272727272727 -c:v h264_nvenc -rc vbr_hq -b:v 150058.6666666667k -maxrate 225088k -bufsize 300117k -c:a aac -b:a 128k -loglevel info -filter_complex split=5[main][lootbar][healthbar][stats][team];[main]scale=1150:1920:force_original_aspect_ratio=increase,crop=1150:1920[main_cropped];[lootbar]crop=440:133:2160:1288,scale=700:211,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];[healthbar]crop=370:65:60:1317,scale=692:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];[stats]crop=280:31:2264:270,scale=504:56,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];[team]crop=160:190:74:26,scale=211:251,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];[main_cropped][lootbar_scaled]overlay=482:1814[t1];[t1][healthbar_scaled]overlay=-100:1796[t2];[t2][stats_scaled]overlay=323:1732[t3];[t3][team_scaled]overlay=0:0,setpts=PTS/1.1 -af atempo=1.1 C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-3.mp4
+2025-10-04 12:02:46 | INFO | FFmpeg: ffmpeg version N-119166-g1e5c65f539-20250408 Copyright (c) 2000-2025 the FFmpeg developers
+2025-10-04 12:02:46 | INFO | FFmpeg: built with gcc 14.2.0 (crosstool-NG 1.27.0.18_7458341)
+2025-10-04 12:02:46 | INFO | FFmpeg: configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --enable-shared --disable-static --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libfreetype --enable-libfribidi --enable-gmp --enable-libxml2 --enable-lzma --enable-fontconfig --enable-libharfbuzz --enable-libvorbis --enable-opencl --disable-libpulse --enable-libvmaf --disable-libxcb --disable-xlib --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-vulkan --enable-libshaderc --enable-libplacebo --enable-libvvenc --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20250408
+2025-10-04 12:02:46 | INFO | FFmpeg: libavutil      60.  1.100 / 60.  1.100
+2025-10-04 12:02:46 | INFO | FFmpeg: libavcodec     62.  0.101 / 62.  0.101
+2025-10-04 12:02:46 | INFO | FFmpeg: libavformat    62.  0.100 / 62.  0.100
+2025-10-04 12:02:46 | INFO | FFmpeg: libavdevice    62.  0.100 / 62.  0.100
+2025-10-04 12:02:46 | INFO | FFmpeg: libavfilter    11.  0.100 / 11.  0.100
+2025-10-04 12:02:46 | INFO | FFmpeg: libswscale      9.  0.100 /  9.  0.100
+2025-10-04 12:02:46 | INFO | FFmpeg: libswresample   6.  0.100 /  6.  0.100
+2025-10-04 12:02:46 | INFO | FFmpeg: libpostproc    59.  0.100 / 59.  0.100
+2025-10-04 12:02:46 | INFO | FFmpeg: Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\alon\AppData\Local\Temp\Highlights\Fortnite\Fortnite 2025.10.03 - 23.43.22.08.Double Elimination.DVR.mp4':
+2025-10-04 12:02:46 | INFO | FFmpeg: Metadata:
+2025-10-04 12:02:46 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 12:02:46 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 12:02:46 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 12:02:46 | INFO | FFmpeg: creation_time   : 2025-10-03T20:43:22.000000Z
+2025-10-04 12:02:46 | INFO | FFmpeg: date            : 2025
+2025-10-04 12:02:46 | INFO | FFmpeg: Duration: 00:00:20.04, start: 0.000000, bitrate: 94788 kb/s
+2025-10-04 12:02:46 | INFO | FFmpeg: Stream #0:0[0x1](und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709, progressive), 2560x1440 [SAR 1:1 DAR 16:9], 94581 kb/s, 120 fps, 120 tbr, 90k tbn (default)
+2025-10-04 12:02:46 | INFO | FFmpeg: Metadata:
+2025-10-04 12:02:46 | INFO | FFmpeg: creation_time   : 2025-10-03T20:43:22.000000Z
+2025-10-04 12:02:46 | INFO | FFmpeg: handler_name    : VideoHandle
+2025-10-04 12:02:46 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 12:02:46 | INFO | FFmpeg: Stream #0:1[0x2](und): Audio: aac (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 192 kb/s (default)
+2025-10-04 12:02:46 | INFO | FFmpeg: Metadata:
+2025-10-04 12:02:46 | INFO | FFmpeg: creation_time   : 2025-10-03T20:43:22.000000Z
+2025-10-04 12:02:46 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 12:02:46 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 12:02:46 | INFO | FFmpeg: [vist#0:0/h264 @ 000001b64c904900] [dec:h264 @ 000001b64c9e7900] Using auto hwaccel type dxva2 with new default device.
+2025-10-04 12:02:46 | INFO | FFmpeg: Stream mapping:
+2025-10-04 12:02:46 | INFO | FFmpeg: Stream #0:0 (h264) -> split:default
+2025-10-04 12:02:46 | INFO | FFmpeg: setpts:default -> Stream #0:0 (h264_nvenc)
+2025-10-04 12:02:46 | INFO | FFmpeg: Stream #0:1 -> #0:1 (aac (native) -> aac (native))
+2025-10-04 12:02:46 | INFO | FFmpeg: Press [q] to stop, [?] for help
+2025-10-04 12:02:46 | INFO | FFmpeg: [h264_nvenc @ 000001b64ef4c040] Specified rc mode is deprecated.
+2025-10-04 12:02:46 | INFO | FFmpeg: [h264_nvenc @ 000001b64ef4c040] Use -rc constqp/cbr/vbr, -tune and -multipass instead.
+2025-10-04 12:02:46 | INFO | FFmpeg: Output #0, mp4, to 'C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-3.mp4':
+2025-10-04 12:02:46 | INFO | FFmpeg: Metadata:
+2025-10-04 12:02:46 | INFO | FFmpeg: major_brand     : mp42
+2025-10-04 12:02:46 | INFO | FFmpeg: minor_version   : 0
+2025-10-04 12:02:46 | INFO | FFmpeg: compatible_brands: isommp42
+2025-10-04 12:02:46 | INFO | FFmpeg: date            : 2025
+2025-10-04 12:02:46 | INFO | FFmpeg: encoder         : Lavf62.0.100
+2025-10-04 12:02:46 | INFO | FFmpeg: Stream #0:0: Video: h264 (Main) (avc1 / 0x31637661), nv12(tv, bt709, progressive), 1150x1920 [SAR 10240:10239 DAR 18400:30717], q=2-31, 150058 kb/s, 120 fps, 15360 tbn
+2025-10-04 12:02:46 | INFO | FFmpeg: Metadata:
+2025-10-04 12:02:46 | INFO | FFmpeg: encoder         : Lavc62.0.101 h264_nvenc
+2025-10-04 12:02:46 | INFO | FFmpeg: Side data:
+2025-10-04 12:02:46 | INFO | FFmpeg: cpb: bitrate max/min/avg: 225088000/0/150058667 buffer size: 300117000 vbv_delay: N/A
+2025-10-04 12:02:46 | INFO | FFmpeg: Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 48000 Hz, stereo, fltp, 128 kb/s (default)
+2025-10-04 12:02:46 | INFO | FFmpeg: Metadata:
+2025-10-04 12:02:46 | INFO | FFmpeg: encoder         : Lavc62.0.101 aac
+2025-10-04 12:02:46 | INFO | FFmpeg: creation_time   : 2025-10-03T20:43:22.000000Z
+2025-10-04 12:02:46 | INFO | FFmpeg: handler_name    : SoundHandle
+2025-10-04 12:02:46 | INFO | FFmpeg: vendor_id       : [0][0][0][0]
+2025-10-04 12:02:47 | INFO | FFmpeg: frame=   69 fps=0.0 q=12.0 size=       0KiB time=00:00:00.14 bitrate=   2.6kbits/s dup=0 drop=7 speed=0.298x
+2025-10-04 12:02:47 | INFO | FFmpeg: frame=  226 fps=221 q=14.0 size=   38656KiB time=00:00:01.77 bitrate=178842.4kbits/s dup=0 drop=23 speed=1.73x
+2025-10-04 12:02:47 | INFO | FFmpeg: [out#0/mp4 @ 000001b64c95f900] video:57158KiB audio:43KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 0.014213%
+2025-10-04 12:02:47 | INFO | FFmpeg: frame=  328 fps=247 q=14.0 Lsize=   57208KiB time=00:00:02.70 bitrate=173040.8kbits/s dup=0 drop=33 speed=2.04x
+2025-10-04 12:02:47 | INFO | FFmpeg: [aac @ 000001b64c9dc600] Qavg: 297.909
+2025-10-04 12:02:47 | INFO | Job SUCCESS | start=0s end=3s | res=2560x1440 | mobile=True | speed=1.1x | output=C:\Users\alon\Desktop\Video_Editing_Software\Output_Video_Files\Fortnite-Video-3.mp4
+2025-10-04 12:02:47 | INFO | RESULT: SUCCESS | file='Fortnite 2025.10.03 - 23.43.22.08.Double Elimination.DVR.mp4' | original_size_bytes=237458348 | new_size_bytes=58581499

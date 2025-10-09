@@ -1,0 +1,7 @@
+# Ignore all MP3s in MP3/ or mp3/
+MP3/*
+mp3/*
+
+# Allow exactly this one file (works on Windows even if folder name case differs)
+!MP3/Cool Dance Background Music (No CopyRights).mp3
+!mp3/Cool Dance Background Music (No CopyRights).mp3

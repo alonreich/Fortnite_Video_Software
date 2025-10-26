@@ -13,7 +13,8 @@ class ProcessThread(QThread):
                  script_dir, progress_update_signal, status_update_signal, finished_signal, logger,
                  show_teammates_overlay=False, quality_level: int = 2,
                  bg_music_path=None, bg_music_volume=None, bg_music_offset=0.0, original_total_duration=0.0,
-                 disable_fades=False, intro_still_sec: float = 0.0, intro_from_midpoint: bool = False):
+                 disable_fades=False, intro_still_sec: float = 0.0, intro_from_midpoint: bool = False, intro_abs_time: float = None):
+
         super().__init__()
         self.input_path = input_path
         self.start_time = start_time
@@ -67,14 +68,15 @@ class ProcessThread(QThread):
         self.intro_from_midpoint = bool(intro_from_midpoint)
         try:
             self.intro_still_sec = float(intro_still_sec or 0.0)
+            self.intro_abs_time = float(intro_abs_time) if intro_abs_time is not None else None
         except Exception:
             self.intro_still_sec = 0.0
-        if not self.intro_from_midpoint or self.intro_still_sec <= 0.0:
+        if self.intro_still_sec <= 0.0:
             self.intro_still_sec = 0.0
         self.start_time_corrected = self.start_time / self.speed_factor if self.speed_factor != 1.0 else self.start_time
         user_duration = self.duration / self.speed_factor if self.speed_factor != 1.0 else self.duration
         self.duration_corrected = max(0.0, user_duration)
-        self._estimated_total_duration = max(1.0, self.duration_corrected + self.intro_still_sec) # Estimate based on core + intro
+        self._estimated_total_duration = max(1.0, self.duration_corrected + self.intro_still_sec)
 
     def _parse_time_to_seconds(self, time_str: str) -> float:
         """Converts HH:MM:SS.ss or MM:SS.ss time string to seconds."""
@@ -98,7 +100,7 @@ class ProcessThread(QThread):
         return 0.0
 
     def get_total_frames(self):
-        return None # Return None to indicate it shouldn't be used for progress calculation now
+        return None
         cmd = [
             ffprobe_path, '-v', 'error', '-select_streams', 'v:0',
             '-show_entries', 'stream=nb_frames', '-of', 'json',
@@ -122,92 +124,105 @@ class ProcessThread(QThread):
         temp_dir = tempfile.gettempdir()
         self.temp_dir = temp_dir
         temp_log_path = os.path.join(temp_dir, f"ffmpeg2pass-{os.getpid()}-{int(time.time())}.log")
-        core_path, intro_path, concat_path = None, None, None # Initialize paths outside try
+        core_path, intro_path, concat_path = None, None, None
         try:
-            # --- Get user inputs ---
             user_start = float(self.start_time)
             user_end   = float(self.end_time)
             total_orig = float(self.original_total_duration or 0.0)
-            
             FADE_DUR = 1.5
-            EPS = 0.01 # Small value for float comparison
-
+            EPS = 0.01
             if self.disable_fades:
-                # --- EXACT TRIM LOGIC (Fades Disabled) ---
                 self.logger.info("Fades disabled. Using exact trim.")
                 in_ss = user_start
                 in_t = user_end - user_start
                 vfade_in_d = 0.0
                 vfade_out_d = 0.0
                 vfade_out_st = 0.0
-                output_clip_duration = in_t # This is pre-speed correction
-
+                output_clip_duration = in_t
             else:
-                # --- PADDED TRIM LOGIC (Fades Enabled) ---
                 self.logger.info("Fades enabled. Calculating padding.")
-                
-                # 1. Calculate Start Time (in_ss) and Fade-In Duration
                 if user_start < FADE_DUR - EPS:
-                    # Too close to beginning. No padding, no fade-in.
                     self.logger.info(f"Start time {user_start}s is too close to 0. Disabling fade-in and start padding.")
                     in_ss = user_start
                     vfade_in_d = 0.0
                 else:
-                    # Enough room. Add padding and fade-in.
                     in_ss = user_start - FADE_DUR
                     vfade_in_d = FADE_DUR
-
-                # 2. Calculate End Time (adj_end) and Fade-Out Duration
                 if total_orig > 0.0 and user_end > (total_orig - FADE_DUR + EPS):
-                    # Too close to end. No padding, no fade-out.
                     self.logger.info(f"End time {user_end}s is too close to total duration {total_orig}s. Disabling fade-out and end padding.")
                     adj_end = total_orig
                     vfade_out_d = 0.0
                 else:
-                    # Enough room. Add padding and fade-out.
                     adj_end = user_end + FADE_DUR
                     vfade_out_d = FADE_DUR
-                
-                # 3. Calculate Input Duration (in_t)
                 in_t = max(0.0, adj_end - in_ss)
-                
-                # 4. Calculate Fade-Out Start Time (based on *output* duration)
-                output_clip_duration = in_t # This is pre-speed correction
+                output_clip_duration = in_t
                 if vfade_out_d > 0.0:
                     vfade_out_st = max(0.0, output_clip_duration - vfade_out_d)
                 else:
-                    vfade_out_st = output_clip_duration # No fade-out, so set 'start' to the end
-
-            # --- Apply Speed Correction to all *output* durations ---
-            # in_ss and in_t are FFMPEG input params (original timeline), they are NOT corrected.
-            # The filtergraph durations (fades, trim) ARE corrected.
-            
+                    vfade_out_st = output_clip_duration
             output_clip_duration = output_clip_duration / self.speed_factor if self.speed_factor != 1.0 else output_clip_duration
-            
             vfade_in_d   = vfade_in_d / self.speed_factor if self.speed_factor != 1.0 else vfade_in_d
             vfade_out_d  = vfade_out_d / self.speed_factor if self.speed_factor != 1.0 else vfade_out_d
             vfade_out_st = vfade_out_st / self.speed_factor if self.speed_factor != 1.0 else vfade_out_st
-            
-            # This 'duration_corrected' is used by the rest of the script for bitrate, etc.
             self.duration_corrected = max(0.0, output_clip_duration)
-            
             if self.speed_factor != 1.0:
                 self.status_update_signal.emit(f"Adjusting trim times for speed factor {self.speed_factor}x.")
-
-            thumbnail_hold_sec = 0.0 # This is now handled by intro_still_sec
+            thumbnail_hold_sec = 0.0
             start_time_corrected = in_ss
-            AUDIO_KBPS = 128
-            intro_len_for_size = (
-                max(0.0, float(self.intro_still_sec))
-                if ((not self.disable_fades) and self.intro_from_midpoint and self.intro_still_sec > 0.0)
-                else 0.0
-            )
+            AUDIO_KBPS = 256
+            def _probe_src_audio_kbps():
+                try:
+                    ffprobe_path = os.path.join(self.bin_dir, 'ffprobe.exe')
+                    cmd = [
+                        ffprobe_path, "-v", "error",
+                        "-select_streams", "a:0",
+                        "-show_entries", "stream=bit_rate",
+                        "-of", "default=nw=1:nk=1",
+                        self.input_path
+                    ]
+                    r = subprocess.run(
+                        cmd, capture_output=True, text=True, check=True,
+                        creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+                    )
+                    br_bps = float((r.stdout or "0").strip() or 0)
+                    if br_bps > 0:
+                        return max(8, int(round(br_bps / 1000.0)))
+                except Exception:
+                    pass
+                try:
+                    ffprobe_path = os.path.join(self.bin_dir, 'ffprobe.exe')
+                    cmd2 = [
+                        ffprobe_path, "-v", "error",
+                        "-show_entries", "format=bit_rate",
+                        "-of", "default=nw=1:nk=1",
+                        self.input_path
+                    ]
+                    r2 = subprocess.run(
+                        cmd2, capture_output=True, text=True, check=True,
+                        creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+                    )
+                    br_bps2 = float((r2.stdout or "0").strip() or 0)
+                    if br_bps2 > 0:
+                        return max(8, int(round(br_bps2 / 1000.0)))
+                except Exception:
+                    pass
+                return None
+            _src_kbps = _probe_src_audio_kbps()
+            if _src_kbps:
+                AUDIO_KBPS = _src_kbps
+                self.status_update_signal.emit(f"Audio bitrate: preserving source ~{AUDIO_KBPS} kbps.")
+                self.logger.info(f"Audio bitrate probe: {AUDIO_KBPS} kbps")
+            else:
+                self.status_update_signal.emit(f"Audio bitrate: source unknown, defaulting to {AUDIO_KBPS} kbps.")
+            intro_len_for_size = max(0.0, float(self.intro_still_sec)) if self.intro_still_sec > 0.0 else 0.0
             effective_duration = self.duration_corrected + intro_len_for_size
             video_bitrate_kbps = None
             if self.keep_highest_res:
                 try:
                     src_bytes = os.path.getsize(self.input_path)
                     target_file_size_bits = max(1, src_bytes) * 8
+
                     def _probe_audio_kbps():
                         """Probe the audio bitrate of the input using ffprobe located in the Binaries folder."""
                         try:
@@ -277,8 +292,10 @@ class ProcessThread(QThread):
             loot_1440 = (440, 133, 2160, 1288)
             stats_1440 = (280, 31, 2264, 270)
             team_1440  = (160, 190, 74, 26)
+
             def scale_box(box, s):
                 return tuple(int(round(v * s)) for v in box)
+
             def map_hud_box_to_input(box, in_w, in_h, base_w=2560, base_h=1440):
                 w, h, x, y = box
                 if x + w > base_w:
@@ -456,19 +473,30 @@ class ProcessThread(QThread):
             audio_filter_cmd = ""
             if self.speed_factor != 1.0:
                 s = float(self.speed_factor)
-                chain = []
-                if s >= 1.0:
-                    while s > 2.0:
-                        chain.append(2.0); s /= 2.0
-                    chain.append(s)
+                if 0.5 <= s <= 2.0:
+                    audio_filter_cmd = f"atempo={s:.3f}"
+                    self.status_update_signal.emit(f"Applying speed factor {self.speed_factor}x to audio (atempo).")
+                    self.logger.info(f"Audio atempo: {audio_filter_cmd}")
                 else:
-                    while s < 0.5:
-                        chain.append(0.5); s /= 0.5
-                    chain.append(s)
-                chain = [min(2.0, max(0.5, round(f, 3))) for f in chain if abs(f-1.0) > 1e-3]
-                audio_filter_cmd = ",".join(f"atempo={f}" for f in chain)
-                self.status_update_signal.emit(f"Applying speed factor: {self.speed_factor}x to audio.")
-                self.logger.info(f"Audio atempo chain: {audio_filter_cmd or 'none (1.0x)'}")
+                    chain = []
+                    s_work = s
+                    if s_work >= 1.0:
+                        while s_work > 2.0:
+                            chain.append(2.0); s_work /= 2.0
+                        chain.append(s_work)
+                    else:
+                        while s_work < 0.5:
+                            chain.append(0.5); s_work /= 0.5
+                        chain.append(s_work)
+                    chain = [min(2.0, max(0.5, round(f, 3))) for f in chain if abs(f - 1.0) > 1e-3]
+                    if chain:
+                        audio_filter_cmd = ",".join(f"atempo={f}" for f in chain)
+                        self.status_update_signal.emit(f"Applying speed factor {self.speed_factor}x to audio (atempo chain).")
+                        self.logger.info(f"Audio atempo chain: {audio_filter_cmd}")
+                    else:
+                        audio_filter_cmd = f"rubberband=tempo={s:.3f}:pitch=1:formant=1:transients=smooth"
+                        self.status_update_signal.emit(f"Applying speed factor {self.speed_factor}x to audio (rubberband fallback).")
+                        self.logger.info(f"Audio rubberband fallback: tempo={s:.3f} pitch=1 formant=1")
             output_dir = os.path.join(self.base_dir, '!!!_Ouput_Video_Files_!!!')
             os.makedirs(output_dir, exist_ok=True)
             i = 1
@@ -480,7 +508,7 @@ class ProcessThread(QThread):
                 i += 1
             ffmpeg_path = os.path.join(self.bin_dir, 'ffmpeg.exe')
             time_regex = re.compile(r'time=(\S+)')
-            self.progress_update_signal.emit(0) # Start at 0
+            self.progress_update_signal.emit(0)
             cmd = [
                 ffmpeg_path, '-y',
                 '-hwaccel', 'auto',
@@ -507,8 +535,6 @@ class ProcessThread(QThread):
                         '-tune', 'hq',
                         '-b:v', f'{video_bitrate_kbps}k',
                         '-maxrate', f'{video_bitrate_kbps}k',
-                        # (optional) keep minrate equal; otherwise omit it entirely:
-                        # '-minrate', f'{video_bitrate_kbps}k',
                         '-bufsize', f'{int(video_bitrate_kbps*1.0)}k',
                         '-g', '60',
                         '-keyint_min', '60',
@@ -569,38 +595,39 @@ class ProcessThread(QThread):
                 )
             if have_bg:
                 if audio_filter_cmd:
-                    core_filters.append(f"[0:a]{audio_filter_cmd},atrim=duration={self.duration_corrected:.6f},asetpts=PTS-STARTPTS[a_main]")
+                    core_filters.append(f"[0:a]{audio_filter_cmd},aresample=48000,asetpts=PTS-STARTPTS[a_main_speed_corrected]")
                 else:
-                    core_filters.append(f"[0:a]atrim=duration={self.duration_corrected:.6f},asetpts=PTS-STARTPTS[a_main]")
+                    core_filters.append(f"[0:a]anull,aresample=48000,asetpts=PTS-STARTPTS[a_main_speed_corrected]")
                 vol = self.bg_music_volume
                 try:
                     vol = float(vol) if vol is not None else 0.35
                 except Exception:
                     vol = 0.35
                 vol = max(0.0, min(1.0, vol))
-                mo  = max(0.0, float(self.bg_music_offset or 0.0))
-                
+                mo = max(0.0, float(self.bg_music_offset or 0.0))
+                music_needed_duration = self.duration_corrected
                 a1_chain = (
-                    f"atrim=start={mo:.3f}:end={mo + self.duration_corrected:.3f},"
-                    f"asetpts=PTS-STARTPTS,volume={vol:.4f}"
-                )
+                    f"atrim=start={mo:.3f}:duration={music_needed_duration:.3f},"
+                    f"asetpts=PTS-STARTPTS,volume={vol:.4f},aresample=48000"
+                 )
                 if not self.disable_fades:
-                    a1_chain += (
-                        f",afade=t=in:st=0:d=1.5"
-                        f",afade=t=out:st={max(0.0, self.duration_corrected - 1.5):.3f}:d=1.5"
-                    )
-                core_filters.append(f"[1:a]{a1_chain}[a_music]")
+                     music_fade_out_start = max(0.0, music_needed_duration - 1.5)
+                     a1_chain += (
+                         f",afade=t=in:st=0:d=1.5"
+                         f",afade=t=out:st={music_fade_out_start:.3f}:d=1.5"
+                     )
+                core_filters.append(f"[1:a]{a1_chain}[a_music_prepared]")
                 core_filters.append(
-                    f"[a_main][a_music]amix=inputs=2:duration=first:dropout_transition=3,"
-                    f"atrim=duration={self.duration_corrected:.6f},asetpts=PTS-STARTPTS[acore]"
+                    "[a_main_speed_corrected][a_music_prepared]"
+                    "amix=inputs=2:duration=first:dropout_transition=3,aresample=48000[acore]"
                 )
             else:
                 if audio_filter_cmd:
-                    core_filters.append(f"[0:a]{audio_filter_cmd},atrim=duration={self.duration_corrected:.6f},asetpts=PTS-STARTPTS[acore]")
+                    core_filters.append(f"[0:a]{audio_filter_cmd},aresample=48000,asetpts=PTS-STARTPTS[acore]")
                 else:
-                    core_filters.append(f"[0:a]atrim=duration={self.duration_corrected:.6f},asetpts=PTS-STARTPTS[acore]")
+                    core_filters.append(f"[0:a]anull,aresample=48000,asetpts=PTS-STARTPTS[acore]")
             core_path = os.path.join(temp_dir, f"core-{os.getpid()}-{int(time.time())}.mp4")
-            final_output_target_path = output_path # Store the intended final path
+            final_output_target_path = output_path
             core_cmd = [
                 ffmpeg_path, '-y', '-hwaccel', 'auto',
                 '-ss', f"{in_ss:.3f}", '-t', f"{in_t:.3f}",
@@ -610,12 +637,13 @@ class ProcessThread(QThread):
                 core_cmd += ['-i', self.bg_music_path]
             core_cmd += vcodec + [
                 '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
+                '-c:a', 'aac', '-b:a', f'{AUDIO_KBPS}k', '-ar', '48000',
                 '-filter_complex', ';'.join(core_filters),
                 '-map', '[vcore]', '-map', '[acore]', '-shortest',
                 core_path
             ]
             self.logger.info(f"STEP 1/3 CORE: {' '.join(map(str, core_cmd))}")
-            core_progress_weight = 0.8 if self.intro_still_sec > 0 else 1.0 # Core is 80% if intro exists, else 100%
+            core_progress_weight = 0.8 if self.intro_still_sec > 0 else 1.0
             proc1 = subprocess.Popen(core_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                                      text=True, creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0),
                                      encoding='utf-8', errors='replace')
@@ -624,7 +652,7 @@ class ProcessThread(QThread):
                 self.logger.info(s)
                 match = time_regex.search(s)
                 if match:
-                    current_time_str = match.group(1).split('.')[0] # Get HH:MM:SS
+                    current_time_str = match.group(1).split('.')[0]
                     current_seconds = self._parse_time_to_seconds(current_time_str)
                     if self.duration_corrected > 0:
                         percent = (current_seconds / self.duration_corrected)
@@ -634,73 +662,100 @@ class ProcessThread(QThread):
             if proc1.returncode != 0:
                 self.finished_signal.emit(False, "Core encode failed (STEP 1/3).")
                 return
-            self.logger.info(
-                f"DEBUG: Checking skip condition. intro_still_sec={self.intro_still_sec:.3f}, disable_fades={self.disable_fades}"
-            )
-            if (self.disable_fades or self.intro_still_sec <= 0.0001):
-                self.logger.info("Skip intro & concat → deliver core only.")
-                try:
-                    shutil.move(core_path, output_path)
-                    self.logger.info(f"Moved temporary core file to final output: {output_path}")
-                    core_path = None  # prevent deletion in finally
-                except Exception as move_err:
-                    self.logger.error(f"Failed to move core file to output path: {move_err}")
-                    self.finished_signal.emit(False, "Failed to finalize output file.")
-                    return
-                self.progress_update_signal.emit(100)
+            if self.intro_still_sec > 0 and self.intro_abs_time is not None:
                 self.logger.info(
-                    f"Job SUCCESS (core only) | start={self.start_time}s end={self.end_time}s | out='{output_path}'"
+                    f"DEBUG: Intro step enforced using user-picked absolute time. intro_still_sec={self.intro_still_sec:.3f}, intro_abs_time={self.intro_abs_time:.3f}"
                 )
-                self.finished_signal.emit(True, output_path)
-                return
-            intro_path = os.path.join(temp_dir, f"intro-{os.getpid()}-{int(time.time())}.mp4")
-            if self.intro_from_midpoint:
-                mid_s = max(0.0, self.duration_corrected * 0.55)  # 55% looks nicer than exact 50% when there are fades
+                intro_path = os.path.join(temp_dir, f"intro-{os.getpid()}-{int(time.time())}.mp4")
+                still_len = max(0.01, float(self.intro_still_sec or 0.1))
+                loop_frames = max(1, int(round(still_len * 60)))
+                base_intro_filter = (
+                    f"select='eq(n\\,0)',format=yuv420p,setsar=1,"
+                    f"loop=loop={loop_frames}:size=1:start=0,setpts=N/60/TB,fps=60[vintro];"
+                    f"anullsrc=r=48000:cl=stereo,atrim=duration={still_len:.3f},asetpts=PTS-STARTPTS[aintro]"
+                )
+                if self.is_mobile_format:
+                    main_width = 1150
+                    main_height = 1920
+                    intro_filter = (
+                        f"[0:v]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height},"
+                        f"{base_intro_filter}"
+                    )
+                    log_msg = f"INTRO: using absolute time={self.intro_abs_time:.3f}s still_len={still_len:.3f}s (applying portrait crop)"
+                else:
+                    intro_filter = f"[0:v]{base_intro_filter}"
+                    log_msg = f"INTRO: using absolute time={self.intro_abs_time:.3f}s still_len={still_len:.3f}s (keeping original aspect ratio)"
+                self.logger.info(log_msg)
+                intro_cmd = [
+                    ffmpeg_path, "-y", "-hwaccel", "auto",
+                    "-ss", f"{self.intro_abs_time:.6f}", # Seek in original file
+                    "-i", self.input_path,
+                    "-t", "0.2",
+                    '-c:v', 'h264_nvenc', '-rc', 'cbr', '-tune', 'hq',
+                    '-b:v', f'{video_bitrate_kbps}k', '-maxrate', f'{video_bitrate_kbps}k',
+                    '-bufsize', f'{int(video_bitrate_kbps*1.0)}k',
+                    '-g', '60', '-keyint_min', '60', '-forced-idr', '1',
+                    '-rc-lookahead', '0', '-bf', '0', '-b_ref_mode', 'disabled',
+                    '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
+                    '-filter_complex', intro_filter,
+                    '-map', '[vintro]', '-map', '[aintro]', '-shortest', intro_path
+                ]
+                self.logger.info(f"STEP 2/3 INTRO (using absolute time): {' '.join(intro_cmd)}")
+                proc2 = subprocess.Popen(
+                    intro_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,
+                    creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0),
+                    encoding='utf-8', errors='replace'
+                 )
+                for line in proc2.stdout:
+                     self.logger.info(line.rstrip())
+                     self.progress_update_signal.emit(95) # Rough progress update
+                proc2.wait()
+                if proc2.returncode != 0:
+                     self.finished_signal.emit(False, "Intro encode failed (STEP 2/3).")
+                     return
             else:
-                mid_s = getattr(self, "intro_frame_time", self.duration_corrected * 0.5)
-            mid_s = float(min(max(0.0, mid_s), self.duration_corrected))
-            loop_frames = max(1, int(round(self.intro_still_sec * 60)))  # we output 60 fps
-            intro_filter = (
-                f"[0:v]trim=start={mid_s:.6f}:end={mid_s+0.1:.6f},setpts=PTS-STARTPTS,"
-                f"select='eq(n\\,0)',"    # take first frame of that 0.1s slice
-                f"format=yuv420p,setsar=1,"
-                f"loop=loop={loop_frames}:size=1:start=0,setpts=N/60/TB,fps=60[vintro];"
-                f"anullsrc=r=48000:cl=stereo,atrim=duration={self.intro_still_sec:.3f},asetpts=PTS-STARTPTS[aintro]"
-            )
-            intro_cmd = [
-                ffmpeg_path, "-y", "-hwaccel", "auto",
-                "-i", core_path,
-                "-c:v", "h264_nvenc", "-rc", "cbr", "-tune", "hq",
-                "-b:v", f"{video_bitrate_kbps}k", "-maxrate", f"{video_bitrate_kbps}k",
-                "-bufsize", f"{int(video_bitrate_kbps*1.0)}k",
-                "-g", "60", "-keyint_min", "60", "-forced-idr", "1",
-                "-rc-lookahead", "0", "-bf", "0", "-b_ref_mode", "disabled",
-                "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-                "-filter_complex", intro_filter,
-                "-map", "[vintro]", "-map", "[aintro]", "-shortest", intro_path
-            ]
-            self.logger.info(f"STEP 2/3 INTRO: {' '.join(intro_cmd)}")
-            proc2 = subprocess.Popen(
-                intro_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True
-            )
-            for line in proc2.stdout:
-                self.logger.info(line.rstrip())
-                self.progress_update_signal.emit(95)
-            proc2.wait()
-            if proc2.returncode != 0:
-                self.finished_signal.emit(False, "Intro encode failed (STEP 2/3).")
-                return
+                 self.logger.info("Skipping Intro step (disabled or no absolute time provided).")
+                 intro_path = None
             concat_list_path = os.path.join(temp_dir, f"concat-{os.getpid()}-{int(time.time())}.txt")
-            with open(concat_list_path, "w", encoding="utf-8") as fcat:
-                fcat.write(f"file '{intro_path.replace('\\', '/')}'\n")
-                fcat.write(f"file '{core_path.replace('\\', '/')}'\n")
-            concat_cmd = [
-                ffmpeg_path, "-y",
-                "-f", "concat", "-safe", "0",
-                "-i", concat_list_path,
-                "-c", "copy", "-movflags", "+faststart",
-                output_path
-            ]
+            files_to_concat = []
+            if intro_path and os.path.exists(intro_path):
+                files_to_concat.append(intro_path)
+            if core_path and os.path.exists(core_path):
+                files_to_concat.append(core_path)
+            else:
+                # Should not happen if Step 1 succeeded, but handle defensively
+                self.finished_signal.emit(False, "Core video file is missing for concatenation.")
+                return
+
+            if len(files_to_concat) == 1:
+                self.logger.info("STEP 3/3 CONCAT: Skipping concat, renaming core file.")
+                try:
+                    shutil.move(files_to_concat[0], output_path)
+                    core_path = None # Prevent deletion later
+                    # Simulate success as if concat ran
+                    self.progress_update_signal.emit(100)
+                    self.logger.info(
+                        f"Job SUCCESS | start={self.start_time}s end={self.end_time}s | out='{output_path}'"
+                    )
+                    self.finished_signal.emit(True, output_path)
+                    return
+                except Exception as move_err:
+                    self.finished_signal.emit(False, f"Failed to move final video: {move_err}")
+                    return
+            elif len(files_to_concat) > 1:
+                with open(concat_list_path, "w", encoding="utf-8") as fcat:
+                    for f in files_to_concat:
+                        fcat.write(f"file '{f.replace('\\', '/')}'\n")
+                concat_cmd = [
+                    ffmpeg_path, "-y",
+                    "-f", "concat", "-safe", "0",
+                    "-i", concat_list_path,
+                    "-c", "copy", "-movflags", "+faststart",
+                    output_path # Use the final calculated output path
+                ]
+            else:
+                 self.finished_signal.emit(False, "No video files found for final step.")
+                 return
             self.logger.info(f"STEP 3/3 CONCAT: {' '.join(concat_cmd)}")
             proc3 = subprocess.Popen(
                 concat_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True
@@ -718,7 +773,6 @@ class ProcessThread(QThread):
             )
             self.finished_signal.emit(True, output_path)
             return
-
         except Exception as e:
             self.logger.exception(f"Job FAILURE with exception: {e}")
             self.finished_signal.emit(False, f"An unexpected error occurred: {e}.")

@@ -11,6 +11,12 @@ from processing.worker import ProcessThread
 
 class FfmpegMixin:
 
+        def _quit_application(self, dialog_to_close):
+            """Accepts the dialog first, then quits the application."""
+            if dialog_to_close:
+                dialog_to_close.accept()
+            QCoreApplication.instance().quit()
+
         def _safe_status(self, text: str, color: str = "white"):
             """Use set_status_text_with_color if available; otherwise just log."""
             try:
@@ -129,8 +135,9 @@ class FfmpegMixin:
                     bg_music_offset=self._get_music_offset(),
                     original_total_duration=self.original_duration,
                     disable_fades=self.no_fade_checkbox.isChecked(),
-                    intro_still_sec=(0.1 if not self.no_fade_checkbox.isChecked() else 0.0),
-                    intro_from_midpoint=True
+                    intro_still_sec=0.1,
+                    intro_from_midpoint=(getattr(self, 'selected_intro_abs_time', None) is None),
+                    intro_abs_time=getattr(self, 'selected_intro_abs_time', None),
                 )
                 self.process_thread.started.connect(lambda: self.logger.info("ProcessThread: started"))
                 self.process_thread.finished.connect(lambda: self.logger.info("ProcessThread: finished"))
@@ -163,6 +170,11 @@ class FfmpegMixin:
             self.process_button.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
             self.progress_bar.setRange(0, 100)
             self.progress_bar.setValue(0)
+            self.selected_intro_abs_time = None
+            try:
+                self.thumb_pick_btn.setText("📸 Use Current Frame as Thumbnail")
+            except Exception:
+                pass
             if success:
                 self._safe_set_phase("Done", ok=True)
             else:
@@ -205,7 +217,7 @@ class FfmpegMixin:
                 open_folder_button = QPushButton("Open Output Folder")
                 open_folder_button.setFixedSize(*button_size)
                 open_folder_button.setStyleSheet("background-color: #6c5f9e; color: white;")
-                open_folder_button.clicked.connect(lambda: (self.open_folder(os.path.dirname(message)), QTimer.singleShot(200, QCoreApplication.instance().quit)))
+                open_folder_button.clicked.connect(lambda: (dialog.accept(), self.open_folder(os.path.dirname(message)), QCoreApplication.instance().quit()))
                 new_file_button = QPushButton("📂   Upload a New File   📂")
                 new_file_button.setFixedSize(*button_size)
                 new_file_button.setStyleSheet("background-color: #6c5f9e; color: white;")
@@ -221,11 +233,12 @@ class FfmpegMixin:
                 finished_button = QPushButton("Close The App!\r\n(Exit)")
                 finished_button.setFixedSize(*button_size)
                 finished_button.setStyleSheet("background-color: #c90e0e; color: white; padding: 8px 16px;")
-                finished_button.clicked.connect(QCoreApplication.instance().quit)
+                finished_button.clicked.connect(lambda: self._quit_application(dialog))
                 grid.addWidget(finished_button, 2, 0, 1, 3, alignment=Qt.AlignCenter)
                 layout.addLayout(grid)
+                layout.addLayout(grid)
                 dialog.setLayout(layout)
-                result = dialog.exec_()
+                result = dialog.exec_() # Run the dialog and get the result
                 if result == QDialog.Rejected:
                     self.handle_new_file()
             else:

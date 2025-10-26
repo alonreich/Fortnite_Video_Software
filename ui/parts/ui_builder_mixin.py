@@ -3,11 +3,57 @@ from PyQt5.QtGui import QPixmap, QPainter, QFont, QIcon, QFontMetrics
 from PyQt5.QtWidgets import (QGridLayout, QMessageBox, QSizePolicy, QHBoxLayout,
                              QVBoxLayout, QFrame, QSlider, QLabel, QStyle,
                              QPushButton, QSpinBox, QDoubleSpinBox, QCheckBox,
-                             QProgressBar, QComboBox, QWidget)
+                             QProgressBar, QComboBox, QWidget, QStyleOptionSpinBox)
 from ui.widgets.trimmed_slider import TrimmedSlider
 from ui.widgets.drop_area import DropAreaFrame
 
+class ClickableSpinBox(QDoubleSpinBox):
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            opt = QStyleOptionSpinBox()
+            self.initStyleOption(opt)
+            up_rect = self.style().subControlRect(QStyle.CC_SpinBox, opt, QStyle.SC_SpinBoxUp, self)
+            down_rect = self.style().subControlRect(QStyle.CC_SpinBox, opt, QStyle.SC_SpinBoxDown, self)
+            if up_rect.contains(event.pos()) or down_rect.contains(event.pos()):
+                super().mousePressEvent(event)
+                return
+        super().mousePressEvent(event)
+
 class UiBuilderMixin:
+
+        def _pick_thumbnail_from_current_frame(self):
+            """
+            Capture the current absolute player time (seconds) as the desired
+            thumbnail frame. Validates that the frame is WITHIN the user's trim.
+            """
+            try:
+                pos_ms = 0
+                try:
+                    pos_ms = int(self.positionSlider.value())
+                except Exception:
+                    pass
+                if (not pos_ms) and getattr(self, 'vlc_player', None):
+                    pos_ms = int(self.vlc_player.get_time() or 0)
+                pos_s = float(pos_ms) / 1000.0
+                if pos_s <= 0.0 and self.original_duration <= 0.0:
+                    QMessageBox.information(self, "No Position", "Move the playhead to a frame first.")
+                    return
+                start_s = (self.start_minute_input.value() * 60) + self.start_second_input.value()
+                end_s   = (self.end_minute_input.value()   * 60) + self.end_second_input.value()
+                self.selected_intro_abs_time = pos_s
+                mm = int(self.selected_intro_abs_time // 60)
+                ss = self.selected_intro_abs_time % 60.0
+                label = f"📸 Thumbnail\n Set: {mm:02d}:{ss:05.2f}"
+                self.thumb_pick_btn.setText(label)
+                if hasattr(self, "logger"):
+                    self.logger.info("THUMB: user picked thumbnail at %.3fs (absolute timeline, within trim)", self.selected_intro_abs_time)
+                self.status_update_signal.emit("Thumbnail frame selected from current position.")
+            except Exception as e:
+                try:
+                    if hasattr(self, "logger"):
+                        self.logger.exception("Thumbnail pick failed: %s", e)
+                finally:
+                    QMessageBox.warning(self, "Error", f"Failed to pick thumbnail: {e}")
 
         def _update_process_button_text(self) -> None:
             """Updates the process button text AND spinner icon."""
@@ -145,13 +191,6 @@ class UiBuilderMixin:
                 QMessageBox.critical(self, "Launch Failed", f"Could not launch Video Merger. Error: {e}")
                 self.show()
         
-        def _sync_right_panel_height(self):
-            try:
-                self.right_panel.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-                self.right_panel.updateGeometry()
-            except Exception:
-                pass
-        
         def eventFilter(self, obj, event):
             if event.type() == QEvent.Resize:
                 if obj is getattr(self, "player_col_container", None):
@@ -245,11 +284,9 @@ class UiBuilderMixin:
             self.video_frame = QFrame()
             self.video_frame.setStyleSheet("background-color: black;")
             self.video_frame.setMinimumHeight(360)
-            self.video_frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             self.video_frame.setFocusPolicy(Qt.StrongFocus)
             self.setFocusPolicy(Qt.StrongFocus)
             self.setFocusProxy(self.video_frame)
-            self.video_frame.installEventFilter(self)
             top_row = QHBoxLayout()
             top_row.setSpacing(12)
             player_col = QVBoxLayout()
@@ -335,7 +372,6 @@ class UiBuilderMixin:
             self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
             self.playPauseButton.clicked.connect(self.toggle_play)
             self.playPauseButton.setFocusPolicy(Qt.NoFocus)
-            self.playPauseButton.setFixedWidth(100)
             self.playPauseButton.setStyleSheet("""
                 QPushButton {
                     background-color: #59A06D;
@@ -351,6 +387,15 @@ class UiBuilderMixin:
                     background-color: #4a865a;
                 }
             """)
+            self.thumb_pick_btn = QPushButton("📸 Set Thumbnail 📸")
+            self.thumb_pick_btn.setToolTip("Pick the exact frame at the current player position for the 0.1s intro still.")
+            self.thumb_pick_btn.setFocusPolicy(Qt.NoFocus)
+            self.thumb_pick_btn.setStyleSheet("font-size: 11px; font-weight: bold;")
+            self.thumb_pick_btn.clicked.connect(self._pick_thumbnail_from_current_frame)
+            _left_col = QVBoxLayout()
+            _left_col.setContentsMargins(0, 0, 0, 0)
+            _left_col.setSpacing(6)
+            left_group = QHBoxLayout()
             trim_layout = QHBoxLayout()
             trim_layout.setContentsMargins(0, 0, 0, 0)
             trim_layout.setSpacing(14)
@@ -410,10 +455,12 @@ class UiBuilderMixin:
             self.merge_btn.clicked.connect(self.launch_video_merger)
             trim_container = QHBoxLayout()
             trim_container.setContentsMargins(0, 0, 0, 0)
+            trim_container.addWidget(self.thumb_pick_btn, 0, Qt.AlignLeft)
             trim_container.addStretch(1)
             trim_container.addLayout(trim_layout)
             trim_container.addStretch(1)
             player_col.addLayout(trim_container)
+            self.thumb_pick_btn.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Fixed)
             self.quality_label = QLabel("Output Quality")
             self.quality_label.setAlignment(Qt.AlignHCenter)
             self.quality_label.setStyleSheet("font-size: 11px; font-weight: bold; margin-left: 10px; margin-right: 10px; padding: 0;")
@@ -487,13 +534,14 @@ class UiBuilderMixin:
             self.process_button.setStyleSheet(self._original_process_btn_style)
             self.process_button.clicked.connect(self._on_process_clicked)
             self.process_button.setEnabled(False)
-            self.speed_spinbox = QDoubleSpinBox()
+            self.speed_spinbox = ClickableSpinBox()
             self.speed_spinbox.setDecimals(1)
             self.speed_spinbox.setSingleStep(0.1)
             self.speed_spinbox.setRange(0.5, 3.1)
-            self.speed_spinbox.setValue(float(self.config_manager.config.get('last_speed', 1.1)))
+            self.speed_spinbox.setValue(1.1)
             self.speed_spinbox.setMinimumWidth(0)
-            self.speed_spinbox.setStyleSheet("font-size: 11px; margin-left: 10px; padding: 0; margin-right: 10px; padding: 7;")
+            self.speed_spinbox.setStyleSheet("font-size: 11px;")
+            self.speed_spinbox.valueChanged.connect(self._on_speed_changed)
             self.speed_label = QLabel("Speed Multiplier")
             self.speed_label.setStyleSheet("font-size: 11px; font-weight: bold; margin-left: 10px; padding: 0; margin-right: 10px; padding: 0;")
             self.speed_spinbox.setAlignment(Qt.AlignCenter)
@@ -510,7 +558,6 @@ class UiBuilderMixin:
             self.teammates_checkbox.setStyleSheet("font-size: 11px; margin-left: 15px; margin-right: 0px; padding: 0;")
             self.teammates_checkbox.setChecked(bool(self.config_manager.config.get('teammates_checked', False)))
             self.teammates_checkbox.toggled.connect(lambda c: self.logger.info("OPTION: Show Teammates Healthbar -> %s", c))
-            self.teammates_checkbox.setVisible(self.mobile_checkbox.isChecked())
             self.no_fade_checkbox = QCheckBox("Disable Fade-In/Out", self)
             self.no_fade_checkbox.setChecked(False)
             _fm = QFontMetrics(self.no_fade_checkbox.font())
@@ -541,7 +588,12 @@ class UiBuilderMixin:
             left_group.setSpacing(10)
             left_group.addWidget(self.mobile_checkbox)
             left_group.addWidget(self.teammates_checkbox)
-            self.left_group_widget = QWidget(); self.left_group_widget.setLayout(left_group)
+            _left_col = QVBoxLayout()
+            _left_col.setContentsMargins(0, 0, 0, 0)
+            _left_col.setSpacing(6)
+            _left_col.addLayout(left_group)
+            self.left_group_widget = QWidget()
+            self.left_group_widget.setLayout(_left_col)
             self.left_group_widget.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
             vbox = QVBoxLayout(); vbox.setContentsMargins(0,0,0,0); vbox.setSpacing(2); vbox.setAlignment(Qt.AlignHCenter)
             vbox.addWidget(self.quality_label, alignment=Qt.AlignHCenter)
@@ -575,10 +627,12 @@ class UiBuilderMixin:
             self.progress_bar = QProgressBar()
             self.progress_bar.setValue(0)
             left_layout.addWidget(self.progress_bar)
-            self._pulse_phase = 0
+            #self._pulse_phase = 0
             self.progress_update_signal.connect(self.on_progress)
             self.status_update_signal.connect(self.on_phase_update)
             self.process_finished_signal.connect(self.on_process_finished)
+            self.selected_intro_abs_time = None
+            self.thumb_pick_btn.setText("📸 Set Thumbnail 📸")
             def _mirror_overlay_progress(pct: int):
                 try:
                     if getattr(self, "_overlay_progress", None):
@@ -696,11 +750,6 @@ class UiBuilderMixin:
             QTimer.singleShot(0, self._update_music_badge)
             self.add_music_checkbox.toggled.connect(self._on_add_music_toggled)
             self.music_combo.currentIndexChanged.connect(self._on_music_selected)
-            def _update_vol_label(_):
-                try:
-                    self.music_volume_label.setText(f"{int(self.music_volume_slider.value())}%")
-                except Exception:
-                    pass
             self._populate_music_combo()
             self._top_row.addWidget(self.right_panel, stretch=1)
             self.video_frame.installEventFilter(self)

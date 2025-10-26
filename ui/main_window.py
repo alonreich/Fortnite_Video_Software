@@ -78,7 +78,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                 self.playPauseButton.setText("Play")
                 self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
             self.is_playing = False
-            QTimer.singleShot(0, lambda: None)
+            self.timer.stop()
         except Exception as e:
             if hasattr(self, "logger"):
                 self.logger.exception("End-of-media handler failed: %s", e)
@@ -185,10 +185,10 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             w = geom.get('w', 700)
             h = geom.get('h', 700)
             self.setGeometry(x, y, w, h)
-            self.setMinimumSize(1250, 600)
+            self.setMinimumSize(1150, 575)
         else:
-            self.setGeometry(200, 200, 1250, 600)
-            self.setMinimumSize(1250, 600)
+            self.setGeometry(200, 200, 1000, 600)
+            self.setMinimumSize(1150, 575)
         self._music_files = []
         self.set_style()
         self.init_ui()
@@ -302,6 +302,24 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             self.logger.info("FILE: dialog canceled")
 
     def handle_file_selection(self, file_path):
+        try:
+            player = getattr(self, "vlc_player", None)
+            if player:
+                if player.is_playing():
+                    player.stop()
+                current_media = player.get_media()
+                if current_media:
+                    current_media.release()
+                    player.set_media(None)
+            timer = getattr(self, "timer", None)
+            if timer and timer.isActive():
+                timer.stop()
+        except Exception as stop_err:
+             self.logger.error("Error stopping existing player/media: %s", stop_err)
+        try:
+            self.reset_app_state()
+        except Exception as reset_err:
+             self.logger.error("Error during UI reset: %s", reset_err)
         self.logger.info("FILE: loading for playback: %s", file_path)
         self.input_file_path = file_path
         self.drop_label.setWordWrap(True)
@@ -309,16 +327,13 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         dir_path = os.path.dirname(file_path)
         if os.path.isdir(dir_path):
             self.last_dir = dir_path
-        cfg = dict(self.config_manager.config)
-        cfg['last_directory'] = self.last_dir
-        self.config_manager.save_config(cfg)
-        try:
-            self.vlc_player.stop()
-        except Exception:
-            pass
         p = os.path.abspath(str(file_path))
         if not os.path.isfile(p):
-            self.set_status_text_with_color("Selected file not found.", "red")
+            status_method = getattr(self, '_safe_status', None) or getattr(self, 'set_status_text_with_color', None)
+            if status_method:
+                status_method("Selected file not found.", "red")
+            else:
+                 self.logger.error("Selected file not found: %s", p)
             return
         media = self.vlc_instance.media_new_path(p)
         if media is None:
@@ -328,28 +343,34 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                 mrl = "file:///" + p.replace("\\", "/")
             media = self.vlc_instance.media_new(mrl)
         if media is None:
-            self.set_status_text_with_color("Failed to open media.", "red")
+            status_method = getattr(self, '_safe_status', None) or getattr(self, 'set_status_text_with_color', None)
+            if status_method:
+                 status_method("Failed to open media.", "red")
+            else:
+                 self.logger.error("Failed to open media: %s", p)
             return
         try:
             media.parse_async()
         except Exception:
             try:
                 media.parse()
-            except Exception:
-                pass
+            except Exception as parse_err:
+                 self.logger.warning("Media parsing failed: %s", parse_err)
+                 pass
         self.vlc_player.set_media(media)
-        if sys.platform.startswith('win'):
-            self.vlc_player.set_hwnd(int(self.video_frame.winId()))
-        elif sys.platform.startswith('linux'):
-            self.vlc_player.set_xwindow(int(self.video_frame.winId()))
-        else:
-            self.vlc_player.set_nsobject(int(self.video_frame.winId()))
+        try:
+            if sys.platform.startswith('win'):
+                self.vlc_player.set_hwnd(int(self.video_frame.winId()))
+            else:
+                 pass
+        except Exception as hwnd_err:
+             self.logger.error("Failed to set HWND for player: %s", hwnd_err)
         self.vlc_player.play()
         try:
             self.vlc_player.audio_set_mute(False)
             self.apply_master_volume()
-        except Exception:
-            pass
+        except Exception as vol_err:
+             self.logger.warning("Failed to set volume/mute state: %s", vol_err)
         if not self.timer.isActive():
             self.timer.start(100)
         self.playPauseButton.setEnabled(True)
@@ -358,28 +379,43 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         self.process_button.setEnabled(False)
         self._length_probe_attempts = 0
         def _probe_length():
-            self._length_probe_attempts += 1
-            ms = int((media.get_duration() if media else 0) or self.vlc_player.get_length() or 0)
-            if ms > 0:
-                self.positionSlider.setRange(0, ms)
-                self.positionSlider.set_duration_ms(ms)
-                self.original_duration = ms / 1000.0
-                total_minutes = int(self.original_duration) // 60
-                self.start_minute_input.setRange(0, total_minutes)
-                self.end_minute_input.setRange(0, total_minutes)
-                if not self.timer.isActive():
-                    self.timer.start(100)
-                self.get_video_info()
-                self.video_frame.setFocus()
-                self.activateWindow()
-            elif self._length_probe_attempts < 50:
-                if self._length_probe_attempts in (10, 20, 30):
-                    try:
-                        media.parse_async()
-                        self.vlc_player.play()
-                    except Exception:
-                        pass
-                QTimer.singleShot(100, _probe_length)
+            try:
+                self._length_probe_attempts += 1
+                ms = int((media.get_duration() if media else 0) or self.vlc_player.get_length() or 0)
+                if ms > 0:
+                    self.positionSlider.setRange(0, ms)
+                    self.positionSlider.set_duration_ms(ms)
+                    self.original_duration = ms / 1000.0
+                    total_minutes = int(self.original_duration) // 60
+                    max_seconds = int(self.original_duration) % 60
+                    self.start_minute_input.setRange(0, total_minutes)
+                    self.start_second_input.setRange(0, 59) # Seconds always 0-59
+                    self.end_minute_input.setRange(0, total_minutes)
+                    self.end_second_input.setRange(0, 59) # Seconds always 0-59
+                    self.start_minute_input.setValue(0)
+                    self.start_second_input.setValue(0)
+                    self.end_minute_input.setValue(total_minutes)
+                    self.end_second_input.setValue(max_seconds)
+                    if not self.timer.isActive():
+                        self.timer.start(100)
+                    self.get_video_info()
+                    self.video_frame.setFocus()
+                    self.activateWindow()
+                elif self._length_probe_attempts < 50:
+                    if self._length_probe_attempts in (10, 20, 30):
+                        try:
+                            media.parse_async()
+                            self.vlc_player.play()
+                        except Exception:
+                            pass
+                    QTimer.singleShot(100, _probe_length)
+                else:
+                     self.logger.error("Failed to get video duration after %d attempts.", self._length_probe_attempts)
+                     status_method = getattr(self, '_safe_status', None) or getattr(self, 'set_status_text_with_color', None)
+                     if status_method:
+                          status_method("Could not determine video duration.", "orange")
+            except Exception as probe_err:
+                 self.logger.error("Error during duration probe: %s", probe_err)
         QTimer.singleShot(0, _probe_length)
 
     def reset_app_state(self):
@@ -414,9 +450,9 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             'w': self.geometry().width(),
             'h': self.geometry().height()
         }
-        cfg['last_speed'] = float(self.speed_spinbox.value())
         cfg['mobile_checked'] = bool(self.mobile_checkbox.isChecked())
         cfg['teammates_checked'] = bool(self.teammates_checkbox.isChecked())
+        cfg['last_directory'] = self.last_dir
         self.config_manager.save_config(cfg)
         super().closeEvent(event)
     
@@ -493,7 +529,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
     
     def _on_state_changed(self, state):
         try:
-            is_playing = getattr(state, 'value', lambda: state)() == 1  # PlayingState==1 in both
+            is_playing = getattr(state, 'value', lambda: state)() == 1
             if hasattr(self, 'play_button'):
                 self.play_button.setText("⏸ Pause" if is_playing else "▶ Play")
         except Exception:

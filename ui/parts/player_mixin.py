@@ -1,3 +1,5 @@
+import vlc
+from PyQt5.QtCore import QTimer
 from PyQt5.QtMultimedia import QMediaPlayer
 from PyQt5.QtWidgets import QStyle
 
@@ -55,11 +57,26 @@ class PlayerMixin:
                     self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
         def set_vlc_position(self, position):
+            """Sets the player position. If stopped, play/pause briefly to update state."""
             try:
                 p = int(position)
             except Exception:
                 p = position
-            self.vlc_player.set_time(p)
+            try:
+                is_stopped = self.vlc_player.get_state() == vlc.State.Stopped
+                self.vlc_player.set_time(p)
+                if is_stopped:
+                    self.vlc_player.play()
+                    QTimer.singleShot(0, self.vlc_player.pause) 
+                    self.playPauseButton.setText("Play")
+                    self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+            except Exception as e:
+                try:
+                    logger = getattr(self, 'logger', None)
+                    if logger:
+                        logger.error("Error in set_vlc_position: %s", e)
+                except Exception:
+                    pass
 
         def _on_vlc_end_reached(self, event=None):
             """
@@ -71,4 +88,3 @@ class PlayerMixin:
                 self.video_ended_signal.emit()
             except Exception:
                 pass
-        

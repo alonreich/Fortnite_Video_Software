@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import QCoreApplication
 import subprocess, ctypes
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
-BIN_DIR   = os.path.join(BASE_DIR, 'binaries')      # contains libvlc*.dll, ffmpeg*.exe, plugins\...
+BIN_DIR   = os.path.join(BASE_DIR, 'binaries')
 PLUGINS   = os.path.join(BIN_DIR, 'plugins')
 os.environ['VLC_PLUGIN_PATH'] = PLUGINS
 if hasattr(os, 'add_dll_directory'):

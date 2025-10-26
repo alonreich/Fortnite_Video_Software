@@ -26,6 +26,14 @@ class MusicMixin:
                 pass
             return d
 
+        def _on_speed_changed(self, value):
+                """Logs speed change and saves it to config."""
+                try:
+                    speed = float(value)
+                    self.logger.info(f"OPTION: Speed Multiplier set to {speed:.1f}x")
+                except Exception as e:
+                    self.logger.error("Error handling speed change: %s", e)
+
         def _update_music_badge(self):
             """Position the small % badge next to the music volume handle (not mirrored)."""
             try:
@@ -125,12 +133,22 @@ class MusicMixin:
                 p = self.music_combo.currentData()
                 if p:
                     initial = float(self.music_offset_input.value()) if hasattr(self, "music_offset_input") else 0.0
+                    try:
+                        self.logger.info("MUSIC: open offset dialog | file='%s' | initial=%.3fs | vol_eff=%d%%",
+                                        os.path.basename(p), initial, self._music_eff())
+                    except Exception:
+                        pass
                     dlg = MusicOffsetDialog(self, getattr(self, "vlc_instance", None), p, initial, getattr(self, "bin_dir", ""))
                     if dlg.exec_() == QDialog.Accepted:
                         self.music_offset_input.setValue(dlg.selected_offset)
+                        try:
+                            self.logger.info("MUSIC: selected | file='%s' | start=%.3fs | vol_eff=%d%%",
+                                            os.path.basename(p), float(dlg.selected_offset), self._music_eff())
+                        except Exception:
+                            pass
             else:
                 self.music_volume_slider.setEnabled(False)
-
+        
         def _on_music_selected(self, index: int):
             if not self._music_files:
                 return
@@ -153,9 +171,19 @@ class MusicMixin:
                 self.music_offset_input.setEnabled(True)
                 self.music_offset_input.setVisible(True)
                 initial = float(self.music_offset_input.value()) if hasattr(self, "music_offset_input") else 0.0
+                try:
+                    self.logger.info("MUSIC: open offset dialog | file='%s' | initial=%.3fs | vol_eff=%d%%",
+                                    os.path.basename(p), initial, self._music_eff())
+                except Exception:
+                    pass
                 dlg = MusicOffsetDialog(self, getattr(self, "vlc_instance", None), p, initial, getattr(self, "bin_dir", ""))
                 if dlg.exec_() == QDialog.Accepted:
                     self.music_offset_input.setValue(dlg.selected_offset)
+                    try:
+                        self.logger.info("MUSIC: selected | file='%s' | start=%.3fs | vol_eff=%d%%",
+                                        os.path.basename(p), float(dlg.selected_offset), self._music_eff())
+                    except Exception:
+                        pass
             except Exception:
                 pass
 
@@ -177,7 +205,7 @@ class MusicMixin:
                         "-y", tmp_png
                     ]
                     subprocess.run(cmd, check=True,
-                                   creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0))
+                                creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0))
                     if os.path.isfile(tmp_png):
                         png = tmp_png
                 except Exception:

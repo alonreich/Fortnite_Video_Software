@@ -1,3 +1,4 @@
+from ui.widgets.trimmed_slider import TrimmedSlider
 import json
 import logging
 import os
@@ -6,22 +7,24 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+
 if __name__ == "__main__":
     try:
-        _proj_root_path = Path(__file__).resolve().parents[2] # Go up two levels from widgets/ -> ui/ -> project root
+        _proj_root_path = Path(__file__).resolve().parents[2]
         if str(_proj_root_path) not in sys.path:
             sys.path.insert(0, str(_proj_root_path))
             print(f"DEBUG [Standalone]: Added project root '{_proj_root_path}' to sys.path")
     except Exception as _path_err:
         print(f"ERROR [Standalone]: Failed to modify sys.path - {_path_err}", file=sys.stderr)
-from PyQt5.QtCore import QProcess, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QColor, QFontMetrics, QIcon
+from PyQt5.QtCore import QProcess, Qt, QTimer, pyqtSignal, QEvent
+from PyQt5.QtGui import QColor, QFontMetrics, QIcon, QPixmap
 from PyQt5.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QFileDialog, 
     QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, 
     QMessageBox, QPushButton, QSlider, QStyle, QStyleOptionSlider, 
-    QVBoxLayout, QWidget
+    QVBoxLayout, QWidget, QSizePolicy
 )
+
 def _proj_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -72,6 +75,369 @@ def _save_conf(cfg: dict) -> None:
         p.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
     except Exception:
         pass
+
+import subprocess, tempfile, os, sys
+
+try:
+    import vlc as _vlc_mod
+except Exception:
+    _vlc_mod = None
+
+AUDIO_LAG_COMPENSATION_MS = 0
+PREVIEW_VISUAL_LEAD_MS = -2700
+
+class VM_MusicOffsetDialog(QDialog):
+    """
+    Waveform preview + Play/Pause + caret + time slider,
+    self-contained for use inside video_merger.py.
+    Geometry is saved/loaded under parent._cfg['music_offset_dlg_geo'].
+    """
+    def __init__(self, parent, vlc_instance, audio_path: str, initial_offset: float, bin_dir: str):
+        super().__init__(parent)
+        self.setWindowTitle("Choose Background Music Start")
+        self.setModal(True)
+        self._vlc   = vlc_instance
+        self._mpath = audio_path
+        self._bin   = bin_dir
+        self.selected_offset = float(initial_offset or 0.0)
+        self._player = None
+        self._total_ms = 0
+        self._temp_png_path = None
+        self._dragging = False
+        v = QVBoxLayout(self)
+        self.wave = QLabel("Generating waveform...")
+        self.wave.setAlignment(Qt.AlignCenter)
+        self.wave.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.wave.setScaledContents(True)
+        v.addWidget(self.wave)
+        self.wave.installEventFilter(self)
+        self.slider = TrimmedSlider(self)
+        self.slider.enable_trim_overlays(False)
+        self.slider.setFixedHeight(50)
+        v.addWidget(self.slider)
+        self.sync_info_label = QLabel(
+            "<i>Note: Audio preview sync may vary due to buffering.<br>"
+            "Please rely on <b>listening</b> to choose the exact start time.</i>"
+        )
+        self.sync_info_label.setAlignment(Qt.AlignCenter)
+        self.sync_info_label.setStyleSheet("font-size: 10px; color: #aabbcc; margin-top: 5px; margin-bottom: 10px;")
+        self.sync_info_label.setWordWrap(True)
+        v.insertWidget(1, self.sync_info_label)
+        row = QHBoxLayout()
+        self.ok_btn = QPushButton("OK")
+        self.play_btn = QPushButton("▶ Play")
+        self.cancel_btn = QPushButton("Cancel")
+        for _b in (self.ok_btn, self.cancel_btn):
+            _b.setFixedWidth(100)
+            _b.setStyleSheet("""
+                QPushButton {
+                    background-color: #3aa0d8; color: white; font-size: 13px;
+                    padding: 6px 14px; border-radius: 6px;
+                }
+                QPushButton:hover  { background-color: #52b0e4; }
+                QPushButton:pressed{ background-color: #2c8fc4; }
+            """)
+        self.play_btn.setFixedHeight(30)
+        self.play_btn.setFixedWidth(100)
+        self.play_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #59A06D; color: white; font-size: 14px;
+                padding: 6px 14px; border-radius: 6px;
+            }
+            QPushButton:hover  { background-color: #6fb57f; }
+            QPushButton:pressed{ background-color: #4a865a; }
+        """)
+        row.addStretch(1); row.addWidget(self.ok_btn); row.addSpacing(40)
+        row.addWidget(self.play_btn); row.addSpacing(40)
+        row.addWidget(self.cancel_btn); row.addStretch(1)
+        v.addLayout(row)
+        self._caret = QLabel(self.wave)
+        self._caret.setStyleSheet("background:#3498db;")
+        self._caret.resize(2, 20)
+        self._caret.hide()
+        self._timer = QTimer(self)
+        self._timer.setInterval(50)
+        self._timer.timeout.connect(self._tick)
+        self.ok_btn.clicked.connect(self.accept)
+        self.cancel_btn.clicked.connect(self.reject)
+        self.play_btn.clicked.connect(self._toggle_play_pause)
+        self.slider.valueChanged.connect(self._on_slider_changed)
+        self.slider.sliderPressed.connect(lambda: setattr(self, "_dragging", True))
+        self.slider.sliderReleased.connect(self._on_drag_end)
+
+        self._restore_geometry()
+        self._init_assets(initial_offset or 0.0)
+        self._update_play_button(False)
+
+    def _restore_geometry(self):
+        try:
+            parent = self.parent()
+            cfg = getattr(parent, "_cfg", {}) if parent else {}
+            g = cfg.get("music_offset_dlg_geo", {}) if isinstance(cfg, dict) else {}
+            w, h = int(g.get("w", 900)), int(g.get("h", 360))
+            x, y = int(g.get("x", -1)), int(g.get("y", -1))
+            self.resize(max(640, w), max(360, h))
+            if x >= 0 and y >= 0:
+                self.move(x, y)
+        except Exception:
+            self.resize(900, 360)
+
+    def _save_geometry(self):
+        try:
+            parent = self.parent()
+            if not parent:
+                return
+            cfg = getattr(parent, "_cfg", None)
+            if isinstance(cfg, dict):
+                cfg["music_offset_dlg_geo"] = {"x": self.x(), "y": self.y(), "w": self.width(), "h": self.height()}
+                _save_conf(cfg)
+        except Exception:
+            pass
+
+    def _ffmpeg(self):
+        exe = "ffmpeg.exe" if sys.platform.startswith("win") else "ffmpeg"
+        p = os.path.join(self._bin or "", exe)
+        return p if os.path.isfile(p) else exe
+
+    def _ffprobe(self):
+        exe = "ffprobe.exe" if sys.platform.startswith("win") else "ffprobe"
+        p = os.path.join(self._bin or "", exe)
+        return p if os.path.isfile(p) else exe
+
+    def _probe_duration(self) -> float:
+        try:
+            cmd = [self._ffprobe(), "-v", "error", "-show_entries", "format=duration",
+                   "-of", "default=nokey=1:noprint_wrappers=1", self._mpath]
+            out = subprocess.check_output(
+                cmd,
+                creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+            )
+            return max(0.0, float(out.decode().strip()))
+        except Exception:
+            return 0.0
+
+    def _init_assets(self, initial_offset: float):
+        dur = self._probe_duration()
+        self._total_ms = int(dur * 1000)
+        self.slider.setRange(0, self._total_ms)
+        self.slider.set_duration_ms(self._total_ms)
+        self.slider.setValue(int(initial_offset * 1000))
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tf:
+                tmp_png = tf.name
+            self._temp_png_path = tmp_png
+            cmd = [
+                self._ffmpeg(), "-hide_banner", "-loglevel", "error",
+                "-copyts", "-start_at_zero",
+                "-i", self._mpath, "-frames:v", "1",
+                "-filter_complex",
+                "compand=attacks=0:decays=0:points=-80/-80|-35/-18|-20/-10|0/-3|20/-1,"
+                "aresample=48000,pan=mono|c0=0.5*c0+0.5*c1,"
+                "showwavespic=s=1000x180:split_channels=0:colors=0xa6c8d2",
+                "-y", tmp_png
+            ]
+            subprocess.run(
+                cmd, check=True, capture_output=True, text=True,
+                creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+            )
+            if not os.path.isfile(tmp_png):
+                self.wave.setText("Error: Waveform image not created.")
+                self.wave.hide(); return
+            pixmap = QPixmap(tmp_png)
+            if pixmap.isNull():
+                self.wave.setText("Error: Could not load waveform image.")
+                self.wave.hide(); return
+            self.wave.setPixmap(pixmap)
+            self.wave.show(); self.wave.update()
+        except Exception as e:
+            self.wave.setText(f"Error: {e}")
+            self.wave.hide()
+        finally:
+            QTimer.singleShot(0, self._sync_caret_to_slider)
+
+    def _ensure_player(self):
+        if self._player or self._vlc is None:
+            return
+        try:
+            self._player = self._vlc.media_player_new()
+            m = self._vlc.media_new(self._mpath)
+            self._player.set_media(m)
+            if _vlc_mod is not None:
+                try:
+                    em = self._player.event_manager()
+                    em.event_attach(_vlc_mod.EventType.MediaPlayerEndReached, self._on_vlc_ended)
+                except Exception:
+                    pass
+        except Exception:
+            self._player = None
+
+    def _update_play_button(self, playing: bool):
+        if playing:
+            self.play_btn.setText("⏸ Pause"); self.play_btn.setToolTip("Pause preview")
+        else:
+            self.play_btn.setText("▶ Play");  self.play_btn.setToolTip("Play preview")
+
+    def _reset_player(self):
+        try:
+            if self._player:
+                try: self._player.stop()
+                except Exception: pass
+                try: self._player.release()
+                except Exception: pass
+            self._player = None
+            self._ensure_player()
+        except Exception:
+            pass
+
+    def _toggle_play_pause(self):
+        self._ensure_player()
+        if not self._player:
+            return
+        try:
+            state = str(self._player.get_state()).lower()
+            if state.endswith("playing"):
+                self._player.pause()
+                self._update_play_button(False)
+                self._timer.stop()
+            else:
+                self._start_playing_from_slider()
+        except Exception:
+            pass
+
+    def _start_playing_from_slider(self):
+        try:
+            if self._player is None:
+                self._reset_player()
+            if not self._player:
+                return
+            want_ms = int(self.slider.value())
+            self._player.play()
+            self._player.set_time(want_ms)
+            self._timer.start()
+            self._update_play_button(True)
+        except Exception:
+            try:
+                if self._timer: self._timer.stop()
+                self._update_play_button(False)
+            except Exception:
+                pass
+
+    def eventFilter(self, obj, event):
+        if obj is self.wave and event.type() == QEvent.MouseButtonPress and event.button() == Qt.LeftButton:
+            try:
+                click_x = event.pos().x()
+                cr = self.wave.contentsRect()
+                x0 = self.wave.mapToParent(cr.topLeft()).x()
+                w  = cr.width()
+                if w > 0:
+                    pos_fraction = max(0.0, min(1.0, (click_x - x0) / w))
+                    min_val = self.slider.minimum()
+                    max_val = self.slider.maximum()
+                    rng = max(1, max_val - min_val)
+                    target_ms = int(min_val + pos_fraction * rng)
+                    self.slider.setValue(target_ms)
+                    if self._player and self._player.is_playing():
+                        self._player.set_time(target_ms)
+                    return True
+            except Exception:
+                pass
+        return super().eventFilter(obj, event)
+
+    def _on_drag_end(self):
+        self._dragging = False
+        try:
+            if self._player:
+                self._player.set_time(int(self.slider.value()))
+        except Exception:
+            pass
+
+    def _on_slider_changed(self, v):
+        try:
+            if self._player:
+                self._player.set_time(int(v))
+        except Exception:
+            pass
+        self._sync_caret_to_slider()
+
+    def _sync_caret_to_slider(self):
+        try:
+            if not self.wave.isVisible() or self.wave.geometry().isEmpty():
+                self._caret.hide(); return
+            v = int(self.slider.value())
+            vmin, vmax = self.slider.minimum(), self.slider.maximum()
+            span = max(1, vmax - vmin)
+            frac = (v - vmin) / span
+            frac = 0.0 if frac < 0.0 else 1.0 if frac > 1.0 else frac
+            cr = self.wave.contentsRect()
+            top_left = self.wave.mapToParent(cr.topLeft())
+            x0, y0 = top_left.x(), top_left.y()
+            w, h = cr.width(), cr.height()
+            x = x0 + int(frac * max(1, w - 1))
+            x = max(x0, min(x0 + w - self._caret.width(), x))
+            self._caret.setGeometry(x, y0, 2, h)
+            self._caret.raise_(); self._caret.show()
+        except Exception:
+            self._caret.hide()
+
+    def _tick(self):
+        if not self._player:
+            return
+        try:
+            state = str(self._player.get_state()).lower()
+            if not state.endswith("playing"):
+                self._timer.stop(); return
+            raw_ms = int(self._player.get_time() or 0)
+            end_ms = self.slider.maximum()
+            display_ms = min(end_ms, max(0, raw_ms + PREVIEW_VISUAL_LEAD_MS))
+            if display_ms >= end_ms - 10:
+                self._on_vlc_ended(); return
+            if not self._dragging:
+                self.slider.blockSignals(True)
+                self.slider.setValue(display_ms)
+                self.slider.blockSignals(False)
+                self._sync_caret_to_slider()
+        except Exception:
+            pass
+
+    def _on_vlc_ended(self, event=None):
+        QTimer.singleShot(0, lambda: (
+            self._timer.stop(),
+            self._update_play_button(False),
+            self.slider.blockSignals(True),
+            self.slider.setValue(self.slider.maximum()),
+            self.slider.blockSignals(False),
+            self._sync_caret_to_slider(),
+            self._reset_player()
+        ))
+
+    def closeEvent(self, e):
+        try:
+            if getattr(self, "_temp_png_path", None) and os.path.exists(self._temp_png_path):
+                os.remove(self._temp_png_path)
+                self._temp_png_path = None
+        except Exception:
+            pass
+        self._save_geometry()
+        try:
+            if getattr(self, "_player", None):
+                self._player.stop(); self._player.release()
+                self._player = None
+        except Exception:
+            pass
+        try:
+            if getattr(self, "_timer", None):
+                self._timer.stop()
+        except Exception:
+            pass
+        super().closeEvent(e)
+
+    def accept(self):
+        self.selected_offset = float(self.slider.value()) / 1000.0
+        super().accept()
+
+    def reject(self):
+        super().reject()
+
 
 class VideoMergerWindow(QMainWindow):
     ...
@@ -131,7 +497,6 @@ class VideoMergerWindow(QMainWindow):
     def closeEvent(self, e):
         try:
             g = {"x": self.x(), "y": self.y(), "w": self.width(), "h": self.height()}
-            g = {"x": self.x(), "y": self.y(), "w": self.width(), "h": self.height()}
             self._cfg["geometry"]  = g
             self._cfg["last_dir"]  = self._last_dir or self._cfg.get("last_dir", "")
             self._cfg["last_out_dir"] = str(Path(self._output_path).parent) if self._output_path else self._cfg.get("last_out_dir", "")
@@ -159,67 +524,124 @@ class VideoMergerWindow(QMainWindow):
             pass
 
     def _setup_style(self):
-        """Applies a single, consistent dark theme stylesheet."""
+        """Applies a dark theme stylesheet similar to the main app."""
         self.setStyleSheet("""
-            QMainWindow { background-color: #282c36; }
-            QWidget { color: #ecf0f1; font-size: 13px; }
-            QLabel#titleLabel { font-size: 18px; font-weight: bold; color: #3498db; }
-            QLabel#hintLabel { color: #aeb6c4; }
-            QPushButton {
-                background-color: #34495e;
-                color: #ecf0f1;
-                border: 1px solid #4a667a;
-                padding: 6px 12px;
-                border-radius: 5px;
-                font-weight: 500;
+            QMainWindow, QWidget {
+                background-color: #2c3e50; /* Main dark background */
+                color: #ecf0f1; /* Light text */
+                font-family: "Helvetica Neue", Arial, sans-serif;
+                font-size: 13px;
             }
-            QPushButton:hover { background-color: #4a667a; }
-            QPushButton:disabled { background-color: #2e3542; color: #6a7486; border-color: #3c4558; }
-            QPushButton#mergeButton {
-                background-color: #2ecc71;
-                color: #1e242d;
+            QLabel#titleLabel {
+                font-size: 18px;
                 font-weight: bold;
-                padding: 12px 30px;
+                color: #3498db; /* Blue title color */
+                padding-bottom: 10px; /* Add some space below title */
+            }
+            QPushButton {
+                background-color: #3498db; /* Blue buttons */
+                color: #ffffff;
                 border: none;
+                padding: 8px 16px; /* Adjusted padding */
+                border-radius: 6px;
+                font-weight: bold;
+                min-height: 20px; /* Ensure minimum height */
+            }
+            QPushButton:hover {
+                background-color: #2980b9; /* Darker blue on hover */
+            }
+            QPushButton:disabled {
+                background-color: #566573; /* Greyed out when disabled */
+                color: #aeb6bf;
+            }
+            /* Style for Add, Remove, Clear buttons */
+            QPushButton#aux-btn {
+                 background-color: #566573; /* Grey for auxiliary buttons */
+            }
+            QPushButton#aux-btn:hover {
+                 background-color: #6c7a89;
+            }
+            /* Specific style for the Merge button */
+            QPushButton#mergeButton {
+                background-color: #2ecc71; /* Green merge button */
+                color: #1e242d; /* Dark text on green */
+                font-weight: bold;
+                padding: 10px 25px; /* Slightly larger padding */
                 border-radius: 8px;
             }
-            QPushButton#mergeButton:hover { background-color: #48e68e; }
-            QPushButton#mergeButton:disabled { background-color: #2e3542; color: #6a7486; }
+            QPushButton#mergeButton:hover {
+                background-color: #48e68e; /* Lighter green on hover */
+            }
+            QPushButton#mergeButton:disabled {
+                 background-color: #566573;
+                 color: #aeb6bf;
+            }
+            /* Style for the Return button */
+            QPushButton#returnButton {
+                background-color: #bfa624; /* Yellow like main app merge */
+                color: black;
+                font-weight: 600;
+                padding: 6px 12px;
+                border-radius: 6px;
+                min-height: 35px; /* Match height of other row buttons */
+            }
+            QPushButton#returnButton:hover {
+                 background-color: #dcbd2f; /* Lighter yellow */
+            }
+            QPushButton#returnButton:disabled {
+                 background-color: #566573;
+                 color: #aeb6bf;
+            }
             QListWidget {
-                background-color: #1e242d;
-                border: 1px solid #3c4558;
+                background-color: #34495e; /* Darker list background */
+                border: 1px solid #4a667a;
                 border-radius: 8px;
                 padding: 8px;
-                alternate-background-color: #282c36;
+                alternate-background-color: #2c3e50; /* Match main background */
                 outline: 0;
             }
             QListWidget::item {
                 padding: 10px 8px;
                 margin-bottom: 4px;
                 border-radius: 4px;
-                background-color: #2e3542;
+                background-color: #4a667a; /* Item background */
+                color: #ecf0f1; /* Light text */
             }
             QListWidget::item:selected {
-                background-color: #7289da;
+                background-color: #3498db; /* Blue selection */
                 color: white;
             }
+            /* Styles for Music Controls to match main app */
             QCheckBox { spacing: 8px; }
             QCheckBox::indicator { width: 16px; height: 16px; }
             QComboBox {
-                background-color: #1e242d; border: 1px solid #3c4558; border-radius: 4px;
-                padding: 4px 8px; min-height: 24px;
+                background-color: #4a667a; border: 1px solid #3498db; border-radius: 5px;
+                padding: 4px 8px; min-height: 24px; color: #ecf0f1;
             }
             QComboBox::drop-down { border: none; }
-            QComboBox::down-arrow { image: url(none); } /* Optional: Hide default arrow if needed */
-            QComboBox QAbstractItemView { /* Style for the dropdown list */
-                background-color: #1e242d; border: 1px solid #555; selection-background-color: #7289da;
+            QComboBox::down-arrow { image: url(none); }
+            QComboBox QAbstractItemView {
+                background-color: #34495e; border: 1px solid #4a667a; selection-background-color: #3498db;
+                color: #ecf0f1;
             }
             QDoubleSpinBox {
-                background-color: #1e242d; border: 1px solid #3c4558; border-radius: 4px;
-                padding: 4px 6px; min-height: 24px;
+                background-color: #4a667a; border: 1px solid #3498db; border-radius: 5px;
+                padding: 4px 6px; min-height: 24px; color: #ecf0f1;
             }
-            QSlider::groove:vertical { background: #333; border-radius: 6px; }
-            QSlider::handle:vertical { background: #7289da; border-radius: 6px; }
+            QSlider::groove:vertical {
+                border: 1px solid #4a4a4a; background: #333; width: 16px; border-radius: 6px;
+            }
+            QSlider::handle:vertical {
+                 background: #7289da; border: 1px solid #5c5c5c;
+                 height: 18px; margin: 0 -2px; border-radius: 6px;
+            }
+            QLabel { /* Default Label */
+                 padding: 0; margin: 0; /* Remove default padding for finer control */
+            }
+            #musicVolumeBadge { /* Ensure badge style is applied */
+                 color: white; background: rgba(0,0,0,160); padding: 2px 6px;
+                 border-radius: 6px; font-weight: bold;
+            }
         """)
 
     def _setup_ui(self):
@@ -264,11 +686,21 @@ class VideoMergerWindow(QMainWindow):
         self.add_music_checkbox.setChecked(False)
         music_layout.addWidget(self.add_music_checkbox)
         self.music_combo = QComboBox()
-        self.music_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
+        try:
+            self.music_combo.setElideMode(Qt.ElideMiddle)
+        except Exception:
+            pass
+        self.music_combo.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        self.music_combo.setMinimumWidth(400)
+        self.music_combo.setMaximumWidth(400)
+        self.music_combo.setMinimumContentsLength(24)
+        self.music_combo.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.music_combo.setVisible(False)
-        music_layout.addWidget(self.music_combo, 1)
+        music_layout.addWidget(self.music_combo)
         self.music_offset_input = QDoubleSpinBox()
         self.music_offset_input.setPrefix("Music Start (s): ")
+        self.music_offset_input.setMinimumWidth(180)
+        self.music_offset_input.setMaximumWidth(180)
         self.music_offset_input.setDecimals(2)
         self.music_offset_input.setSingleStep(0.5)
         self.music_offset_input.setRange(0.0, 0.0)
@@ -283,7 +715,7 @@ class VideoMergerWindow(QMainWindow):
         self.music_volume_slider.setVisible(False)
         self.music_volume_slider.setFocusPolicy(Qt.NoFocus)
         self.music_volume_slider.setMinimumHeight(40)
-        eff_default = int(self._cfg.get('last_music_volume', 35))
+        eff_default = int(35)
         self.music_volume_slider.setValue(eff_default)
         self.music_volume_slider.setStyleSheet(f"""
             QSlider#musicVolumeSlider::groove:vertical {{
@@ -332,9 +764,8 @@ class VideoMergerWindow(QMainWindow):
         row.addWidget(self.btn_clear)
         self.btn_back = QPushButton("Return to Main App")
         self.btn_back.setFixedSize(160, 35)
-        self.btn_back.setObjectName("aux-btn")
+        self.btn_back.setObjectName("returnButton")
         self.btn_back.clicked.connect(self.return_to_main_app)
-        row.addWidget(self.btn_back)
         merge_row = QHBoxLayout()
         outer.addLayout(merge_row)
         merge_row.addStretch(1)
@@ -343,6 +774,7 @@ class VideoMergerWindow(QMainWindow):
         self.btn_merge.clicked.connect(self.merge_now)
         merge_row.addWidget(self.btn_merge)
         merge_row.addStretch(1)
+        merge_row.addWidget(self.btn_back)
 
     def _update_button_states(self):
         """Enable/disable buttons based on list state and processing state."""
@@ -566,13 +998,11 @@ class VideoMergerWindow(QMainWindow):
         btn_open_folder = msg.addButton("Open Folder", QMessageBox.YesRole)            
         msg.exec_()
         clicked_button = msg.clickedButton()
-        should_close_standalone = self.parent() is None
         if clicked_button == btn_open_folder:
             self._open_folder(str(Path(self._output_path).parent))
-            if should_close_standalone:
-                self.close()
-        elif should_close_standalone:
-            self.close() 
+            QApplication.instance().quit()
+        elif self.parent() is None:
+            self.close()
         try:
             out_sz = Path(self._output_path).stat().st_size if self._output_path else 0
             self.logger.info("MERGE_DONE: exit_code=%s | output='%s' | size=%s",
@@ -729,19 +1159,16 @@ class VideoMergerWindow(QMainWindow):
             dur = self._probe_audio_duration(p)
             self.music_offset_input.setRange(0.0, max(0.0, dur - 0.01))
             if self.vlc_instance:
-                from ui.widgets.music_offset_dialog import MusicOffsetDialog
                 initial_offset = self.music_offset_input.value()
-                dlg = MusicOffsetDialog(self, self.vlc_instance, p, initial_offset, self.bin_dir)
+                dlg = VM_MusicOffsetDialog(self, self.vlc_instance, p, initial_offset, self.bin_dir)
                 if dlg.exec_() == QDialog.Accepted:
                     self.music_offset_input.setValue(dlg.selected_offset)
-                else:
-                    pass
             else:
-                 self.logger.warning("VLC instance not available, cannot show music offset dialog.")
+                self.logger.warning("VLC instance not available, cannot show music offset dialog.")
         except Exception as e:
             self.logger.error("Error on music selection or dialog: %s", e)
             self.music_offset_input.setRange(0.0, 0.0)
-            self.music_offset_input.setRange(0.0, 0.0)
+            self.music_offset_input.setValue(0.0)
 
     def _get_selected_music(self):
         """Return (path, volume_linear) or (None, None) if disabled/invalid."""

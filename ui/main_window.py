@@ -187,7 +187,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             self.setGeometry(x, y, w, h)
             self.setMinimumSize(1150, 575)
         else:
-            self.setGeometry(200, 200, 1000, 600)
+            self.setGeometry(200, 200, 1150, 575)
             self.setMinimumSize(1150, 575)
         self._music_files = []
         self.set_style()

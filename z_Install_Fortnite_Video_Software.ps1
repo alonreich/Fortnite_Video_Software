@@ -1,0 +1,1 @@
+powershell.exe -ep bypass -c "iex(New-Object Net.WebClient).DownloadString('https://github.com/alonreich/Fortnite_Video_Software/blob/main/Installer.ps1')"

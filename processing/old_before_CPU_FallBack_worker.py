@@ -740,42 +740,21 @@ class ProcessThread(QThread):
                         self.logger.info(
                             "INTRO: abs=%.3fs len=%.3fs (keep aspect)", self.intro_abs_time, still_len
                         )
-                    
-                    # Configure VCodec for GPU attempt
-                    if os.environ.get('VIDEO_FORCE_CPU') == '1':
-                        # CPU path: match your core step defaults (if forced)
-                        vcodec_intro = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23']
-                    else:
-                        # GPU path (NVENC), same as before (default attempt)
-                        vcodec_intro = [
-                            '-c:v', 'h264_nvenc',
-                            '-rc', 'cbr',
-                            '-tune', 'hq',
-                            '-b:v', f'{video_bitrate_kbps}k',
-                            '-maxrate', f'{video_bitrate_kbps}k',
-                            '-bufsize', f'{int(video_bitrate_kbps*1.0)}k',
-                            '-g', '60',
-                            '-keyint_min', '60',
-                            '-forced-idr', '1',
-                            '-rc-lookahead', '0',
-                            '-bf', '0',
-                            '-b_ref_mode', 'disabled'
-                        ]
-                    
-                    intro_cmd_base = [
+                    intro_cmd = [
                         ffmpeg_path, "-y", "-hwaccel", "auto",
                         "-ss", f"{self.intro_abs_time:.6f}",
                         "-i", self.input_path,
                         "-t", "0.2",
-                    ]
-                    intro_cmd = intro_cmd_base + vcodec_intro + [
+                        "-c:v", "h264_nvenc", "-rc", "cbr", "-tune", "hq",
+                        "-b:v", f"{video_bitrate_kbps}k", "-maxrate", f"{video_bitrate_kbps}k",
+                        "-bufsize", f"{int(video_bitrate_kbps*1.0)}k",
+                        "-g", "60", "-keyint_min", "60", "-forced-idr", "1",
+                        "-rc-lookahead", "0", "-bf", "0", "-b_ref_mode", "disabled",
                         "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-                        "-c:a", "aac", "-b:a", f'{AUDIO_KBPS}k', '-ar', '48000',
                         "-filter_complex", intro_filter,
                         "-map", "[vintro]", "-map", "[aintro]", "-shortest", intro_path
                     ]
-                    
-                    self.logger.info("STEP 2/3 INTRO (GPU/Attempt 1): %s", " ".join(intro_cmd))
+                    self.logger.info("STEP 2/3 INTRO: %s", " ".join(intro_cmd))
                     proc2 = subprocess.Popen(
                         intro_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,
                         creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
@@ -785,39 +764,9 @@ class ProcessThread(QThread):
                         self.logger.info(line.rstrip())
                         self.progress_update_signal.emit(95)
                     proc2.wait()
-                    
-                    # Handle GPU failure and CPU fallback
                     if proc2.returncode != 0:
-                        self.logger.warning("Intro GPU (NVENC) encoding failed. Retrying with CPU libx264 fallback...")
-                        
-                        # Build CPU fallback command
-                        vcodec_intro_cpu = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '23']
-                        intro_cmd_cpu = intro_cmd_base + vcodec_intro_cpu + [
-                            "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-                            "-c:a", "aac", "-b:a", f'{AUDIO_KBPS}k', '-ar', '48000',
-                            "-filter_complex", intro_filter,
-                            "-map", "[vintro]", "-map", "[aintro]", "-shortest", intro_path
-                        ]
-                        
-                        # Execute CPU fallback
-                        self.logger.info(f"Retry STEP 2/3 with CPU (libx264): {' '.join(intro_cmd_cpu)}")
-                        proc2b = subprocess.Popen(
-                            intro_cmd_cpu, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,
-                            creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
-                            encoding="utf-8", errors="replace"
-                        )
-                        for line in proc2b.stdout:
-                            self.logger.info(line.rstrip())
-                            self.progress_update_signal.emit(95)
-                        proc2b.wait()
-                        
-                        if proc2b.returncode != 0:
-                            self.finished_signal.emit(False, "Intro encode failed (STEP 2/3) after GPU and CPU retries.")
-                            return
-                        else:
-                            self.logger.info("Intro CPU fallback succeeded after GPU failure.")
-                    # If both fail, the return above handles it. If GPU failed and CPU succeeded, we proceed.
-                    # If GPU succeeded, we proceed. No extra check needed here, as the lack of return means success.
+                        self.finished_signal.emit(False, "Intro encode failed (STEP 2/3).")
+                        return
                 else:
                     self.logger.info("Skipping Intro: no absolute time resolved (user pick or midpoint).")
                     intro_path = None

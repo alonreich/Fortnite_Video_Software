@@ -659,63 +659,120 @@ class ProcessThread(QThread):
                         progress = int(max(0, min(100 * core_progress_weight, percent * 100 * core_progress_weight)))
                         self.progress_update_signal.emit(progress)
             proc1.wait()
+            proc1.wait()
             if proc1.returncode != 0:
-                self.finished_signal.emit(False, "Core encode failed (STEP 1/3).")
-                return
-            if self.intro_still_sec > 0 and self.intro_abs_time is not None:
-                self.logger.info(
-                    f"DEBUG: Intro step enforced using user-picked absolute time. intro_still_sec={self.intro_still_sec:.3f}, intro_abs_time={self.intro_abs_time:.3f}"
-                )
-                intro_path = os.path.join(temp_dir, f"intro-{os.getpid()}-{int(time.time())}.mp4")
-                still_len = max(0.01, float(self.intro_still_sec or 0.1))
-                loop_frames = max(1, int(round(still_len * 60)))
-                base_intro_filter = (
-                    f"select='eq(n\\,0)',format=yuv420p,setsar=1,"
-                    f"loop=loop={loop_frames}:size=1:start=0,setpts=N/60/TB,fps=60[vintro];"
-                    f"anullsrc=r=48000:cl=stereo,atrim=duration={still_len:.3f},asetpts=PTS-STARTPTS[aintro]"
-                )
-                if self.is_mobile_format:
-                    main_width = 1150
-                    main_height = 1920
-                    intro_filter = (
-                        f"[0:v]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height},"
-                        f"{base_intro_filter}"
-                    )
-                    log_msg = f"INTRO: using absolute time={self.intro_abs_time:.3f}s still_len={still_len:.3f}s (applying portrait crop)"
-                else:
-                    intro_filter = f"[0:v]{base_intro_filter}"
-                    log_msg = f"INTRO: using absolute time={self.intro_abs_time:.3f}s still_len={still_len:.3f}s (keeping original aspect ratio)"
-                self.logger.info(log_msg)
-                intro_cmd = [
-                    ffmpeg_path, "-y", "-hwaccel", "auto",
-                    "-ss", f"{self.intro_abs_time:.6f}", # Seek in original file
-                    "-i", self.input_path,
-                    "-t", "0.2",
-                    '-c:v', 'h264_nvenc', '-rc', 'cbr', '-tune', 'hq',
-                    '-b:v', f'{video_bitrate_kbps}k', '-maxrate', f'{video_bitrate_kbps}k',
-                    '-bufsize', f'{int(video_bitrate_kbps*1.0)}k',
-                    '-g', '60', '-keyint_min', '60', '-forced-idr', '1',
-                    '-rc-lookahead', '0', '-bf', '0', '-b_ref_mode', 'disabled',
-                    '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
-                    '-filter_complex', intro_filter,
-                    '-map', '[vintro]', '-map', '[aintro]', '-shortest', intro_path
-                ]
-                self.logger.info(f"STEP 2/3 INTRO (using absolute time): {' '.join(intro_cmd)}")
-                proc2 = subprocess.Popen(
-                    intro_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,
+                self.logger.warning("GPU (NVENC) encoding failed. Retrying with CPU libx264 fallback...")
+                cmd_cpu = []
+                skip_next = False
+                for a in core_cmd:
+                    if skip_next:
+                        skip_next = False
+                        continue
+                    if a == "h264_nvenc":
+                        cmd_cpu.append("libx264")
+                        continue
+                    if a in ["-hwaccel", "auto"]:
+                        skip_next = (a == "-hwaccel")
+                        continue
+                    if a in ["-rc", "cbr", "vbr", "-tune", "hq", "-rc-lookahead", "0", "-bf", "0", "-b_ref_mode", "disabled"]:
+                        continue
+                    cmd_cpu.append(a)
+                cmd_cpu += ["-preset", "medium", "-crf", "23"]
+                self.logger.info(f"Retry STEP 1/3 with CPU (libx264): {' '.join(cmd_cpu)}")
+                proc1b = subprocess.Popen(
+                    cmd_cpu,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
                     creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0),
-                    encoding='utf-8', errors='replace'
-                 )
-                for line in proc2.stdout:
-                     self.logger.info(line.rstrip())
-                     self.progress_update_signal.emit(95) # Rough progress update
-                proc2.wait()
-                if proc2.returncode != 0:
-                     self.finished_signal.emit(False, "Intro encode failed (STEP 2/3).")
-                     return
+                    encoding='utf-8',
+                    errors='replace'
+                )
+                for line in proc1b.stdout:
+                    s = line.strip()
+                    self.logger.info(s)
+                    match = time_regex.search(s)
+                    if match:
+                        current_time_str = match.group(1).split('.')[0]
+                        current_seconds = self._parse_time_to_seconds(current_time_str)
+                        if self.duration_corrected > 0:
+                            percent = (current_seconds / self.duration_corrected)
+                            progress = int(max(0, min(100 * core_progress_weight, percent * 100 * core_progress_weight)))
+                            self.progress_update_signal.emit(progress)
+                proc1b.wait()
+                if proc1b.returncode != 0:
+                    self.finished_signal.emit(False, "Core encode failed (STEP 1/3) after GPU and CPU retries.")
+                    return
+                else:
+                    self.logger.info("CPU fallback succeeded after GPU failure.")
+            if self.intro_still_sec > 0:
+                if self.intro_abs_time is None and self.intro_from_midpoint:
+                    mid = (user_start + user_end) / 2.0
+                    if total_orig > 0.0:
+                        mid = min(max(0.0, mid), max(0.0, total_orig - 0.05))
+                    self.intro_abs_time = float(mid)
+                    self.logger.info("INTRO: no user pick; using midpoint %.3fs as thumbnail.", self.intro_abs_time)
+                if self.intro_abs_time is not None:
+                    self.logger.info(
+                        "DEBUG: Intro step enabled. still=%.3fs  abs=%.3fs",
+                        float(self.intro_still_sec or 0.1), self.intro_abs_time
+                    )
+                    intro_path = os.path.join(temp_dir, f"intro-{os.getpid()}-{int(time.time())}.mp4")
+                    still_len = max(0.01, float(self.intro_still_sec or 0.1))
+                    loop_frames = max(1, int(round(still_len * 60)))
+                    base_intro_filter = (
+                        f"select='eq(n\\,0)',format=yuv420p,setsar=1,"
+                        f"loop=loop={loop_frames}:size=1:start=0,setpts=N/60/TB,fps=60[vintro];"
+                        f"anullsrc=r=48000:cl=stereo,atrim=duration={still_len:.3f},asetpts=PTS-STARTPTS[aintro]"
+                    )
+                    if self.is_mobile_format:
+                        main_width = 1150
+                        main_height = 1920
+                        intro_filter = (
+                            f"[0:v]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,"
+                            f"crop={main_width}:{main_height},{base_intro_filter}"
+                        )
+                        self.logger.info(
+                            "INTRO: abs=%.3fs len=%.3fs (portrait crop)", self.intro_abs_time, still_len
+                        )
+                    else:
+                        intro_filter = f"[0:v]{base_intro_filter}"
+                        self.logger.info(
+                            "INTRO: abs=%.3fs len=%.3fs (keep aspect)", self.intro_abs_time, still_len
+                        )
+                    intro_cmd = [
+                        ffmpeg_path, "-y", "-hwaccel", "auto",
+                        "-ss", f"{self.intro_abs_time:.6f}",
+                        "-i", self.input_path,
+                        "-t", "0.2",
+                        "-c:v", "h264_nvenc", "-rc", "cbr", "-tune", "hq",
+                        "-b:v", f"{video_bitrate_kbps}k", "-maxrate", f"{video_bitrate_kbps}k",
+                        "-bufsize", f"{int(video_bitrate_kbps*1.0)}k",
+                        "-g", "60", "-keyint_min", "60", "-forced-idr", "1",
+                        "-rc-lookahead", "0", "-bf", "0", "-b_ref_mode", "disabled",
+                        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+                        "-filter_complex", intro_filter,
+                        "-map", "[vintro]", "-map", "[aintro]", "-shortest", intro_path
+                    ]
+                    self.logger.info("STEP 2/3 INTRO: %s", " ".join(intro_cmd))
+                    proc2 = subprocess.Popen(
+                        intro_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,
+                        creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
+                        encoding="utf-8", errors="replace"
+                    )
+                    for line in proc2.stdout:
+                        self.logger.info(line.rstrip())
+                        self.progress_update_signal.emit(95)
+                    proc2.wait()
+                    if proc2.returncode != 0:
+                        self.finished_signal.emit(False, "Intro encode failed (STEP 2/3).")
+                        return
+                else:
+                    self.logger.info("Skipping Intro: no absolute time resolved (user pick or midpoint).")
+                    intro_path = None
             else:
-                 self.logger.info("Skipping Intro step (disabled or no absolute time provided).")
-                 intro_path = None
+                self.logger.info("Skipping Intro: disabled (intro_still_sec<=0).")
+                intro_path = None
             concat_list_path = os.path.join(temp_dir, f"concat-{os.getpid()}-{int(time.time())}.txt")
             files_to_concat = []
             if intro_path and os.path.exists(intro_path):
@@ -723,16 +780,13 @@ class ProcessThread(QThread):
             if core_path and os.path.exists(core_path):
                 files_to_concat.append(core_path)
             else:
-                # Should not happen if Step 1 succeeded, but handle defensively
                 self.finished_signal.emit(False, "Core video file is missing for concatenation.")
                 return
-
             if len(files_to_concat) == 1:
                 self.logger.info("STEP 3/3 CONCAT: Skipping concat, renaming core file.")
                 try:
                     shutil.move(files_to_concat[0], output_path)
-                    core_path = None # Prevent deletion later
-                    # Simulate success as if concat ran
+                    core_path = None
                     self.progress_update_signal.emit(100)
                     self.logger.info(
                         f"Job SUCCESS | start={self.start_time}s end={self.end_time}s | out='{output_path}'"
@@ -751,7 +805,7 @@ class ProcessThread(QThread):
                     "-f", "concat", "-safe", "0",
                     "-i", concat_list_path,
                     "-c", "copy", "-movflags", "+faststart",
-                    output_path # Use the final calculated output path
+                    output_path
                 ]
             else:
                  self.finished_signal.emit(False, "No video files found for final step.")

@@ -15,31 +15,42 @@ try:
 except Exception:
     _vlc_mod = None
 AUDIO_LAG_COMPENSATION_MS = 0
-PREVIEW_VISUAL_LEAD_MS = -2700
+PREVIEW_VISUAL_LEAD_MS = 1000
 
 class MusicOffsetDialog(QDialog):
     """Waveform preview + single Play/Pause + thin caret line + offset slider."""
 
     def eventFilter(self, obj, event: QEvent):
-        if obj is self.wave and event.type() == QEvent.MouseButtonPress:
-            if event.button() == Qt.LeftButton:
-                try:
-                    click_x = event.pos().x()
-                    wave_x0, _, wave_w, _ = self._wave_draw_rect()
-                    if wave_w > 0:
-                        relative_x = click_x - wave_x0
-                        pos_fraction = max(0.0, min(1.0, relative_x / wave_w))
-                        min_val = self.slider.minimum()
-                        max_val = self.slider.maximum()
-                        rng = max(1, max_val - min_val)
-                        target_ms = int(min_val + pos_fraction * rng)
-                        self.slider.setValue(target_ms)
-                        if self._player and self._player.is_playing():
-                            self._player.set_time(target_ms)
-                        return True
-                except Exception as e:
-                    print(f"Error handling waveform click: {e}")
+        if obj is self.wave:
+            if event.type() == QEvent.MouseButtonPress:
+                if event.button() == Qt.LeftButton:
+                    try:
+                        click_x = event.pos().x()
+                        wave_x0, _, wave_w, _ = self._wave_draw_rect()
+                        if wave_w > 0:
+                            relative_x = click_x - wave_x0
+                            pos_fraction = max(0.0, min(1.0, relative_x / wave_w))
+                            min_val = self.slider.minimum()
+                            max_val = self.slider.maximum()
+                            rng = max(1, max_val - min_val)
+                            target_ms = int(min_val + pos_fraction * rng)
+                            self.slider.setValue(target_ms)
+                            if self._player and self._player.is_playing():
+                                self._player.set_time(target_ms)
+                            self._sync_caret_to_slider()
+                            return True
+                    except Exception as e:
+                        (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                            .error("Waveform click error: %s", e))
+            elif event.type() == QEvent.Resize:
+                QTimer.singleShot(0, self._sync_caret_to_slider)
         return super().eventFilter(obj, event)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "_overlay"):
+            self._overlay.setGeometry(0, 0, self.width(), self.height())
+        QTimer.singleShot(0, self._sync_caret_to_slider)
 
     def _stop_player_and_timer(self):
         """Safely stops the VLC player and timer."""
@@ -49,13 +60,19 @@ class MusicOffsetDialog(QDialog):
                 self._player.release()
                 self._player = None
         except Exception as e:
-            print(f"DEBUG: Error stopping music preview player: {e}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("Error stopping music preview player: %s", e))
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("Error stopping music preview timer: %s", e))
             pass
         try:
             if getattr(self, "_timer", None):
                 self._timer.stop()
         except Exception as e:
-            print(f"DEBUG: Error stopping music preview timer: {e}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("Error stopping music preview player: %s", e))
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("Error stopping music preview timer: %s", e))
             pass
 
     def closeEvent(self, event):
@@ -102,9 +119,10 @@ class MusicOffsetDialog(QDialog):
         v = QVBoxLayout(self)
         self.wave = QLabel("Generating waveform...")
         self.wave.setAlignment(Qt.AlignCenter)
-        self.wave.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.wave.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) 
         self.wave.setScaledContents(True)
-        self.wave.setAlignment(Qt.AlignCenter)
+        self.wave.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.wave.setStyleSheet("background: black;")
         v.addWidget(self.wave)
         self.wave.installEventFilter(self)
         self.slider = TrimmedSlider(self)
@@ -162,7 +180,11 @@ class MusicOffsetDialog(QDialog):
         self.cancel_btn.clicked.connect(self.reject)
         self.play_btn.clicked.connect(self._toggle_play_pause)
         self.slider.valueChanged.connect(self._on_slider_changed)
-        self._caret = QLabel(self.wave)
+        self._overlay = QLabel(self)
+        self._overlay.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self._overlay.setStyleSheet("background: transparent;")
+        self._overlay.lower()
+        self._caret = QLabel(self._overlay)
         self._caret.setStyleSheet("background:#3498db;")
         self._caret.resize(2, 20)
         self._caret.hide()
@@ -180,38 +202,35 @@ class MusicOffsetDialog(QDialog):
 
     def _restore_geometry(self):
         try:
-            cm = getattr(self.parent(), "config_manager", None)
-            cfg = getattr(cm, "config", None) if cm else None
-            g = cfg.get("music_offset_dlg_geo", {}) if isinstance(cfg, dict) else {}
-            w, h = int(g.get("w", 450)), int(g.get("h", 200))
+            parent_obj = self.parent()
+            cfg_key = "music_offset_dlg_geo"
+            cm = getattr(parent_obj, "config_manager", None)
+            cfg = getattr(cm, "config", None) if cm else {}
+            if not cfg:
+                 cfg = getattr(parent_obj, "_cfg", {})
+            g = cfg.get(cfg_key, {}) if isinstance(cfg, dict) else {}
+            w, h = int(g.get("w", 1200)), int(g.get("h", 350)) 
             x, y = int(g.get("x", -1)), int(g.get("y", -1))
-            self.resize(max(640, w), max(360, h))
+            self.resize(max(1200, w), max(280, h))
             if x >= 0 and y >= 0:
                 self.move(x, y)
-        # Set a more reasonable default size if loading fails or no config exists
-            if x < 0 or y < 0:
-                self.resize(400, 180) # Default size if no position saved
-            else:
-                 self.resize(max(640, w), max(360, h))
-                 self.move(x, y)
-        except Exception:
-             self.resize(400, 180)
+        except Exception as e:
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .error("Restore geometry failed: %s", e))
+            self.resize(1200, 350)
 
     def _save_geometry(self):
         try:
-            cm = getattr(self.parent(), "config_manager", None)
-            cfg = getattr(cm, "config", None) if cm else None
-            if isinstance(cfg, dict):
-                cfg["music_offset_dlg_geo"] = {"x": self.x(), "y": self.y(), "w": self.width(), "h": self.height()}
-                for m in ("save", "save_config", "write"):
-                    if hasattr(cm, m):
-                        try:
-                            getattr(cm, m)()
-                            break
-                        except Exception:
-                            pass
-        except Exception:
-            pass
+            parent_obj = self.parent()
+            cm = getattr(parent_obj, "config_manager", None)
+            if cm is None:
+                return
+            cfg = dict(cm.config)
+            cfg["music_offset_dlg_geo"] = {"x": self.x(), "y": self.y(), "w": self.width(), "h": self.height()}
+            cm.save_config(cfg)
+        except Exception as e:
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .error("Save geometry failed: %s", e))
 
     def _ffmpeg(self):
         exe = "ffmpeg.exe" if sys.platform.startswith("win") else "ffmpeg"
@@ -252,52 +271,56 @@ class MusicOffsetDialog(QDialog):
                 "-copyts", "-start_at_zero",
                 "-i", self._mpath, "-frames:v", "1",
                 "-filter_complex",
-                "compand=attacks=0:decays=0:points=-80/-80|-35/-18|-20/-10|0/-3|20/-1,"
-                "aresample=48000,pan=mono|c0=0.5*c0+0.5*c1,"
-                "showwavespic=s=1000x180:split_channels=0:colors=0xa6c8d2",
+                "volume=4.0,aresample=48000,pan=mono|c0=0.5*c0+0.5*c1,"
+                "showwavespic=s=1200x280:split_channels=0:colors=0xa6c8d2",
                 "-y", tmp_png
             ]
-            print(f"DEBUG: Running FFMPEG for waveform: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd, check=True, capture_output=True, text=True,
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("Running FFMPEG for waveform: %s", ' '.join(cmd)))
+            subprocess.run(
+                cmd, check=True,
                 creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
             )
-            print(f"DEBUG: FFMPEG waveform output:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("FFMPEG waveform generated to %s", tmp_png))
             if not os.path.isfile(tmp_png):
-                print(f"ERROR: Waveform PNG file not found after FFMPEG ran: {tmp_png}")
+                (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                    .error("Waveform PNG not found after ffmpeg: %s", tmp_png))
                 self._temp_png_path = None
                 self.wave.setText("Error: Waveform image not created.")
                 self.wave.hide()
                 return
             pixmap = QPixmap(tmp_png)
             if pixmap.isNull():
-                print(f"ERROR: QPixmap is Null. Failed to load image from {tmp_png}")
+                (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                    .error("QPixmap is null; failed to load %s", tmp_png))
                 self._temp_png_path = None
                 self.wave.setText("Error: Could not load waveform image.")
                 self.wave.hide()
                 return
-            print(f"DEBUG: QPixmap loaded successfully. Size: {pixmap.width()}x{pixmap.height()}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("Waveform pixmap loaded: %dx%d", pixmap.width(), pixmap.height()))
             self.wave.setPixmap(pixmap)
             dpr = pixmap.devicePixelRatio() if hasattr(pixmap, 'devicePixelRatio') else 1.0
             w, h = int(pixmap.width() / dpr), int(pixmap.height() / dpr)
-            print(f"DEBUG: Setting label minimum size to {w}x{h}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("Waveform label target size %dx%d; pixmap set", w, h))
             self.wave.show()
             self.wave.update()
-            print("DEBUG: Set waveform pixmap and updated label.")
         except subprocess.CalledProcessError as e:
-            print(f"ERROR: FFMPEG waveform generation failed. Return Code: {e.returncode}. Command: {' '.join(cmd)}")
-            print(f"ERROR: FFMPEG waveform STDERR:\n{e.stderr}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .error("FFMPEG waveform failed (rc=%s): %s", getattr(e, "returncode", "?"), ' '.join(cmd)))
             self._temp_png_path = None
             self.wave.setText("Error: FFMPEG failed to generate waveform.")
             self.wave.hide()
         except Exception as e:
-            print(f"ERROR: Exception during waveform generation/loading: {e}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .error("Exception during waveform generation/loading: %s", e))
             self._temp_png_path = None
             self.wave.setText(f"Error: {e}")
             self.wave.hide()
         finally:
             QTimer.singleShot(0, self._sync_caret_to_slider)
-
 
     def _ensure_player(self):
         if self._player or self._vlc is None:
@@ -375,40 +398,42 @@ class MusicOffsetDialog(QDialog):
         try:
             state = ""
             try:
-                # Ensure player exists before getting state
                 if self._player:
                     state = str(self._player.get_state()).lower()
             except Exception:
-                 # If getting state fails, try resetting
-                 state = "error" # Treat as needing reset
-
-            # If ended, errored, or player doesn't exist, reset/recreate it
+                 state = "error"
             if ("ended" in state) or ("error" in state) or (self._player is None):
                 self._reset_player()
             if not self._player:
-                print("ERROR: Cannot start playback, player object invalid after reset.")
+                (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                    .error("Cannot start playback: player invalid after reset"))
                 return
             want_ms = int(self.slider.value())
             try:
                  state = str(self._player.get_state()).lower()
             except Exception:
-                 print("ERROR: Failed to get player state before playing.")
+                 (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                    .error("Failed to get player state before playing"))
                  state = "unknown"
             if state.endswith("playing"):
                 self._player.set_time(want_ms)
                 if not self._timer.isActive():
                     self._timer.start()
-                self._update_play_button(True) # Make sure button says Pause
-                print(f"DEBUG: Seeked while playing to {want_ms}ms")
+                self._update_play_button(True)
+                (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                    .debug("Seek while playing -> %d ms", want_ms))
             else:
                 play_result = self._player.play()
-                print(f"DEBUG: Called play(). Result: {play_result}") # Check if play() reports error
+                (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                    .debug("play() -> %s", play_result))
                 set_time_result = self._player.set_time(want_ms)
-                print(f"DEBUG: Called set_time({want_ms}ms). Result: {set_time_result}") # Check if set_time reports error (-1 usually)
+                (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                    .debug("set_time(%d) -> %s", want_ms, set_time_result))
                 self._timer.start()
-                self._update_play_button(True) # Update button to Pause
+                self._update_play_button(True)
         except Exception as e:
-            print(f"ERROR in _start_playing_from_slider: {e}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .error("start_playing_from_slider error: %s", e))
             try:
                 if self._timer: self._timer.stop()
                 self._update_play_button(False)
@@ -435,55 +460,53 @@ class MusicOffsetDialog(QDialog):
         self._sync_caret_to_slider()
 
     def _wave_draw_rect(self):
-        """
-        Returns (x0, y0, w, h) of the SCALED waveform pixmap inside the QLabel.
-        Accounts for alignment, contentsRect, and aspect ratio preservation.
-        """
         pm = self.wave.pixmap()
-        cr = self.wave.contentsRect() # Area available for drawing inside margins/borders
-        if pm is None or pm.isNull() or not self.wave.hasScaledContents():
+        cr = self.wave.contentsRect()
+        if pm is None or pm.isNull():
             return cr.left(), cr.top(), cr.width(), cr.height()
-        pm_size = pm.size() / pm.devicePixelRatioF() # Original logical size
-        lbl_size = cr.size() # Available size in label
+        pm_size = pm.size() / pm.devicePixelRatioF()
+        lbl_size = cr.size()
         scaled_size = pm_size.scaled(lbl_size, Qt.KeepAspectRatio)
-        x0 = cr.left()
-        y0 = cr.top()
-        align = self.wave.alignment()
-        if align & Qt.AlignRight:
-            x0 += lbl_size.width() - scaled_size.width()
-        elif align & Qt.AlignHCenter:
-            x0 += (lbl_size.width() - scaled_size.width()) / 2
-        if align & Qt.AlignBottom:
-            y0 += lbl_size.height() - scaled_size.height()
-        elif align & Qt.AlignVCenter:
-            y0 += (lbl_size.height() - scaled_size.height()) / 2
-        return int(x0), int(y0), int(scaled_size.width()), int(scaled_size.height())
+        x0 = 0
+        y0 = int((lbl_size.height() - scaled_size.height()) / 2)
+        return int(x0), int(y0), lbl_size.width(), int(scaled_size.height())
 
     def _sync_caret_to_slider(self):
-        """Place the caret so that time maps 1:1 onto the area where the waveform is actually drawn."""
+        """
+        Final version:
+        - X is computed from the actual drawn waveform inside the label
+        - but the line itself spans the *entire dialog height*
+        - so no slider / bottom widget / tight layout can visually "push" it
+        """
         try:
-            if not self.wave.isVisible() or self.wave.geometry().isEmpty():
+            if not self.wave.isVisible():
+                self._caret.hide()
+                return
+            wave_x0, wave_y0, wave_w, wave_h = self._wave_draw_rect()
+            if wave_w <= 0:
                 self._caret.hide()
                 return
             v = int(self.slider.value())
             vmin, vmax = self.slider.minimum(), self.slider.maximum()
             span = max(1, vmax - vmin)
-            frac = (v - vmin) / span
-            if frac < 0.0: frac = 0.0
-            if frac > 1.0: frac = 1.0
-            cr = self.wave.contentsRect()
-            top_left = self.wave.mapToParent(cr.topLeft())
-            x0, y0 = top_left.x(), top_left.y()
-            w, h = cr.width(), cr.height()
-            x = x0 + int(frac * max(1, w - 1))
-            x = max(x0, min(x0 + w - self._caret.width(), x))
-            self._caret.setGeometry(x, y0, 2, h)
+            frac = max(0.0, min(1.0, (v - vmin) / span))
+            x_in_label = wave_x0 + int(frac * wave_w)
+            wave_pos_in_dialog = self.wave.mapTo(self, QPoint(0, 0))
+            caret_x = wave_pos_in_dialog.x() + x_in_label
+            caret_x = max(1, min(self.width() - 2, caret_x))
+            caret_y = 0
+            caret_h = self.height()
+            if not hasattr(self, "_overlay"):
+                return
+            self._caret.setParent(self._overlay)
+            self._caret.setGeometry(caret_x, caret_y, 2, caret_h)
+            self._overlay.raise_()
             self._caret.raise_()
             self._caret.show()
         except Exception as e:
-            print(f"Error in _sync_caret_to_slider: {e}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .error("sync_caret_to_slider error: %s", e))
             self._caret.hide()
-    
 
     def _tick(self):
         if not self._player:
@@ -505,7 +528,8 @@ class MusicOffsetDialog(QDialog):
                 self.slider.blockSignals(False)
                 self._sync_caret_to_slider()
         except Exception as e:
-            print(f"Error in _tick: {e}")
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .debug("tick error: %s", e))
             pass
 
     def _on_vlc_ended(self, event=None):

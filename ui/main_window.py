@@ -20,6 +20,7 @@ from ui.parts.volume_mixin import VolumeMixin
 from ui.parts.trim_mixin import TrimMixin
 from ui.parts.music_mixin import MusicMixin
 from ui.parts.ffmpeg_mixin import FfmpegMixin
+from ui.parts.keyboard_mixin import KeyboardMixin
 
 class _QtLiveLogHandler(logging.Handler):
     def __init__(self, ui_owner):
@@ -34,7 +35,7 @@ class _QtLiveLogHandler(logging.Handler):
         except Exception:
             pass
 
-class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerMixin, VolumeMixin, TrimMixin, MusicMixin, FfmpegMixin, QWidget):
+class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerMixin, VolumeMixin, TrimMixin, MusicMixin, FfmpegMixin, KeyboardMixin, QWidget):
     progress_update_signal = pyqtSignal(int)
     status_update_signal = pyqtSignal(str)
     process_finished_signal = pyqtSignal(bool, str)
@@ -191,8 +192,8 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             self.setMinimumSize(1150, 575)
         self._music_files = []
         self.set_style()
+        self.installEventFilter(self)
         self.init_ui()
-        
         self._scan_mp3_folder()
         self._update_window_size_in_title()
         if file_path:
@@ -293,8 +294,22 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         """)
 
     def select_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Video File", self.last_dir,
-                                                "Video Files (*.mp4 *.mkv *.mov *.avi)")
+        try:
+            if getattr(self, "vlc_player", None) and self.vlc_player.is_playing():
+                self.vlc_player.set_pause(1)
+            if getattr(self, "timer", None) and self.timer.isActive():
+                self.timer.stop()
+        except Exception as e:
+            try:
+                self.logger.error("FILE: failed to pause before dialog: %s", e)
+            except Exception:
+                pass
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Video File",
+            self.last_dir,
+            "Video Files (*.mp4 *.mkv *.mov *.avi)",
+        )
         if file_path:
             self.logger.info("FILE: selected via dialog: %s", file_path)
             self.handle_file_selection(file_path)
@@ -389,9 +404,9 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                     total_minutes = int(self.original_duration) // 60
                     max_seconds = int(self.original_duration) % 60
                     self.start_minute_input.setRange(0, total_minutes)
-                    self.start_second_input.setRange(0, 59) # Seconds always 0-59
+                    self.start_second_input.setRange(0, 59)
                     self.end_minute_input.setRange(0, total_minutes)
-                    self.end_second_input.setRange(0, 59) # Seconds always 0-59
+                    self.end_second_input.setRange(0, 59)
                     self.start_minute_input.setValue(0)
                     self.start_second_input.setValue(0)
                     self.end_minute_input.setValue(total_minutes)
@@ -441,19 +456,36 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         self.reset_app_state()
         self.select_file()
 
+    def _save_app_state_and_config(self):
+        """Encapsulates all logic for saving application state to disk."""
+        cfg = self.config_manager.config
+        try:
+            cfg['window_geometry'] = {
+                'x': self.geometry().x(),
+                'y': self.geometry().y(),
+                'w': self.geometry().width(),
+                'h': self.geometry().height()
+            }
+        except Exception:
+            pass
+        try:
+            cfg['mobile_checked'] = bool(self.mobile_checkbox.isChecked())
+        except Exception:
+            pass
+        try:
+            cfg['teammates_checked'] = bool(self.teammates_checkbox.isChecked())
+        except Exception:
+            pass
+        try:
+            cfg['last_directory'] = self.last_dir
+        except Exception:
+            pass
+        self.config_manager.save_config(cfg)
+        self.logger.info("CONFIG: Saved current state to disk.")
+        
     def closeEvent(self, event):
         """Saves the window position and size before closing."""
-        cfg = self.config_manager.config
-        cfg['window_geometry'] = {
-            'x': self.geometry().x(),
-            'y': self.geometry().y(),
-            'w': self.geometry().width(),
-            'h': self.geometry().height()
-        }
-        cfg['mobile_checked'] = bool(self.mobile_checkbox.isChecked())
-        cfg['teammates_checked'] = bool(self.teammates_checkbox.isChecked())
-        cfg['last_directory'] = self.last_dir
-        self.config_manager.save_config(cfg)
+        self._save_app_state_and_config()
         super().closeEvent(event)
     
     def show_message(self, title, message):

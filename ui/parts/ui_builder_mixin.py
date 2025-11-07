@@ -181,11 +181,19 @@ class UiBuilderMixin:
                 self.logger.info("ACTION: Launching Video Merger…")
                 vlc_instance = getattr(self, 'vlc_instance', None)
                 bin_dir = getattr(self, 'bin_dir', '')
-                self.merger_window = VideoMergerWindow(parent=self, vlc_instance=vlc_instance, bin_dir=bin_dir)
+                config_manager = getattr(self, 'config_manager', None)
+                self.merger_window = VideoMergerWindow(
+                    parent=None,
+                    vlc_instance=vlc_instance,
+                    bin_dir=bin_dir,
+                    config_manager=config_manager
+                )
                 self.merger_window.return_to_main.connect(self.show)
-                self.merger_window.show()
                 self.hide()
-                self.logger.info("STATUS: Video Merger launched in same process; main UI hidden.")
+                self.merger_window.show()
+                self.merger_window.raise_()
+                self.merger_window.activateWindow()
+                self.logger.info("STATUS: Video Merger launched as top-level window; main UI hidden.")
             except Exception as e:
                 self.logger.critical(f"ERROR: Failed to launch Video Merger in-process. Error: {e}")
                 QMessageBox.critical(self, "Launch Failed", f"Could not launch Video Merger. Error: {e}")
@@ -284,9 +292,8 @@ class UiBuilderMixin:
             self.video_frame = QFrame()
             self.video_frame.setStyleSheet("background-color: black;")
             self.video_frame.setMinimumHeight(360)
-            self.video_frame.setFocusPolicy(Qt.StrongFocus)
+            self.video_frame.setFocusPolicy(Qt.NoFocus)
             self.setFocusPolicy(Qt.StrongFocus)
-            self.setFocusProxy(self.video_frame)
             top_row = QHBoxLayout()
             top_row.setSpacing(12)
             player_col = QVBoxLayout()
@@ -304,7 +311,7 @@ class UiBuilderMixin:
             self.volume_slider.setObjectName("volumeSlider")
             self.volume_slider.setRange(0, 100)
             self.volume_slider.setSingleStep(1)
-            self.volume_slider.setPageStep(5)
+            self.volume_slider.setPageStep(15)
             self.volume_slider.setTickInterval(10)
             self.volume_slider.setTickPosition(QSlider.TicksBothSides)
             self.volume_slider.setTracking(True)
@@ -681,7 +688,7 @@ class UiBuilderMixin:
             self.music_volume_slider.setObjectName("musicVolumeSlider")
             self.music_volume_slider.setRange(0, 100)
             self.music_volume_slider.setSingleStep(1)
-            self.music_volume_slider.setPageStep(5)
+            self.music_volume_slider.setPageStep(15)
             self.music_volume_slider.setTickInterval(1)
             self.music_volume_slider.setTickPosition(QSlider.TicksBothSides)
             self.music_volume_slider.setTracking(True)

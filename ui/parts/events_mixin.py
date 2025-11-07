@@ -2,7 +2,18 @@ from PyQt5.QtCore import QEvent, Qt, QRect
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen
 
 class EventsMixin:
+        def mousePressEvent(self, event):
+            """Force keyboard focus back to the main window to enable shortcuts."""
+            try:
+                if event.button() == Qt.LeftButton:
+                    self.setFocus(Qt.MouseFocusReason)
+            except Exception:
+                pass
+            super().mousePressEvent(event)
         def eventFilter(self, obj, event):
+            if obj is self and event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
+                self.toggle_play()
+                return True # Consume the event: do not pass it on.
             if obj is getattr(self, "_overlay", None) and event.type() == QEvent.Paint:
                 p = QPainter(self._overlay)
                 try:
@@ -64,9 +75,6 @@ class EventsMixin:
                     p.end()
                 return True
             if obj is getattr(self, "video_frame", None):
-                if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
-                    self.toggle_play()
-                    return True
                 if event.type() in (QEvent.Resize, QEvent.Move):
                     try:
                         self._layout_volume_slider()
@@ -75,38 +83,6 @@ class EventsMixin:
                         pass
                     return False
             return super().eventFilter(obj, event)
-
-        def keyPressEvent(self, event):
-            if event.key() == Qt.Key_Space:
-                self.toggle_play()
-                event.accept()
-            elif event.key() in (Qt.Key_Left, Qt.Key_Right):
-                try:
-                    is_fine_seek = bool(event.modifiers() & Qt.ControlModifier)
-                    normal_seek_ms = 300
-                    fine_seek_ms = 7
-                    seek_amount_ms = fine_seek_ms if is_fine_seek else normal_seek_ms
-                    if event.key() == Qt.Key_Left:
-                        seek_amount_ms = -seek_amount_ms
-                    if hasattr(self, 'vlc_player') and hasattr(self, 'positionSlider'):
-                        current_ms = int(self.vlc_player.get_time() or 0)
-                        max_ms = int(self.positionSlider.maximum() or 0)
-                        new_ms = current_ms + seek_amount_ms
-                        new_ms = max(0, min(max_ms, new_ms)) # Clamp within bounds
-                        if hasattr(self, 'set_vlc_position'):
-                            self.set_vlc_position(new_ms)
-                            self.positionSlider.blockSignals(True)
-                            self.positionSlider.setValue(new_ms)
-                            self.positionSlider.blockSignals(False)
-                        event.accept()
-                    else:
-                        super().keyPressEvent(event)
-                except Exception as e:
-                     if hasattr(self, 'logger'):
-                         self.logger.error("Error during keyboard seek: %s", e)
-                     super().keyPressEvent(event)
-            else:
-                super().keyPressEvent(event)
 
         def resizeEvent(self, event):
             self._update_window_size_in_title()

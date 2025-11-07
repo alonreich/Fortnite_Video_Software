@@ -59,40 +59,44 @@ if __name__ == "__main__":
     file_arg = sys.argv[1] if len(sys.argv) > 1 else None
 
 def _hwenc_available(ffmpeg_path: str) -> bool:
-    """Probe FFmpeg for HW encoders/accels without ever raising."""
     try:
         out = subprocess.check_output(
             [ffmpeg_path, "-hide_banner", "-encoders"],
             stderr=subprocess.STDOUT,
             creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
             text=True
-        ).lower()
-        if any(t in out for t in ("h264_nvenc","hevc_nvenc","h264_qsv","hevc_qsv","h264_amf","hevc_amf")):
-            return True
+        )
+        txt = out.lower()
+        return any(tag in txt for tag in ("h264_nvenc", "hevc_nvenc", "h264_qsv", "hevc_qsv", "h264_amf", "hevc_amf"))
     except Exception:
-        pass
-    try:
-        out2 = subprocess.check_output(
-            [ffmpeg_path, "-hide_banner", "-hwaccels"],
-            stderr=subprocess.STDOUT,
-            creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
-            text=True
-        ).lower()
-        if any(t in out2 for t in ("cuda","dxva2","d3d11va","qsv","amf")):
-            return True
-    except Exception:
-        pass
-    return False
-
-ffmpeg_path = os.path.join(BIN_DIR, "ffmpeg.exe")
+        return False
+ffmpeg_path = os.path.join(BIN_DIR, 'ffmpeg.exe')
 gpu_ok = _hwenc_available(ffmpeg_path)
 if not gpu_ok:
-    os.environ["VIDEO_FORCE_CPU"] = "1"
-    try:
-        import logging
-        logging.getLogger("Startup").warning("Hardware-encoder probe failed; forcing CPU.")
-    except Exception:
-        pass
+    os.environ['VIDEO_FORCE_CPU'] = '1'
+    from PyQt5.QtWidgets import QMessageBox
+    m = QMessageBox()
+    m.setIcon(QMessageBox.Critical)
+    m.setWindowTitle("GPU Not Detected!!!")
+    m.setText("GPU Not Detected!!!\nFailing over to CPU\n(This means a much slower processing of videos)")
+    m.setStandardButtons(QMessageBox.Ok)
+    m.setStyleSheet("""
+        QMessageBox QLabel {
+            color: #ff2d2d; 
+            font-size: 18px; 
+            font-weight: 800;
+        }
+        QMessageBox {
+            background: #1b1b1b;
+        }
+        QPushButton {
+            background-color: #ff2d2d; color: white;
+            font-size: 14px; padding: 8px 16px; border-radius: 6px;
+        }
+        QPushButton:hover { background-color: #ff4d4d; }
+        QPushButton:pressed { background-color: #cc2424; }
+    """)
+    m.exec_()
 ex = VideoCompressorApp(file_arg)
 try:
     if os.path.exists(icon_path):

@@ -119,7 +119,7 @@ class PhaseOverlayMixin:
             self._overlay.show()
             self._overlay.raise_()
             QTimer.singleShot(0, self._update_overlay_mask)
-            self._sample_perf_counters_safe() # Run once immediately
+            self._sample_perf_counters_safe()
             self._stats_timer.start()
             if not getattr(self, "_color_pulse_timer", None):
                  self._color_pulse_timer = QTimer(self)
@@ -142,18 +142,17 @@ class PhaseOverlayMixin:
             if hasattr(self, "process_button") and hasattr(self, "_original_process_btn_style"):
                 self.process_button.setText("Process Video")
                 self.process_button.setStyleSheet(self._original_process_btn_style)
-                self.process_button.setIcon(QIcon()) # Clear icon
+                self.process_button.setIcon(QIcon())
         except Exception:
             pass
         try:
             if getattr(self, "_overlay", None):
                 self._overlay.hide()
-                self._overlay.setMask(QRegion()) # IMPORTANT: Clear the mask
+                self._overlay.setMask(QRegion())
         except Exception:
             pass
 
     def _pulse_button_color(self):
-        """This ONLY pulses the button color. Text/icon is handled separately."""
         try:
             if not getattr(self, "is_processing", False):
                 if getattr(self, "_color_pulse_timer", None):
@@ -162,8 +161,8 @@ class PhaseOverlayMixin:
             self._pulse_phase = (getattr(self, "_pulse_phase", 0) + 1) % 20
             t = self._pulse_phase / 20.0
             k = (math.sin(4 * math.pi * t) + 1) / 2
-            g1 = (72, 235, 90)   # Bright green
-            g2 = (10,  80, 16)   # Dark green
+            g1 = (72, 235, 90)
+            g2 = (10,  80, 16)
             r = int(g1[0] * k + g2[0] * (1 - k))
             g = int(g1[1] * k + g2[1] * (1 - k))
             b = int(g1[2] * k + g2[2] * (1 - k))

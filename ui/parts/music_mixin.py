@@ -5,7 +5,7 @@ import tempfile
 from PyQt5.QtCore import Qt, QTimer, QRect
 from PyQt5.QtGui import QPixmap, QPainter, QColor
 from PyQt5.QtWidgets import (QStyleOptionSlider, QStyle, QDialog, QVBoxLayout,
-                             QLabel, QHBoxLayout, QPushButton)
+                             QLabel, QHBoxLayout, QPushButton, QWidget)
 from ui.widgets.trimmed_slider import TrimmedSlider
 from ui.widgets.music_offset_dialog import MusicOffsetDialog
 
@@ -128,6 +128,8 @@ class MusicMixin:
             if hasattr(self, "music_volume_label"):
                 self.music_volume_label.setVisible(enable)
             if enable:
+                self.volume_shortcut_target = 'music'
+                self.logger.info("SHORTCUT: Volume keys now control MUSIC volume")
                 self.music_volume_slider.setValue(35)
                 self.music_volume_slider.setEnabled(True)
                 p = self.music_combo.currentData()
@@ -165,6 +167,8 @@ class MusicMixin:
                     return
                 dur = self._probe_audio_duration(p)
                 self.music_offset_input.setRange(0.0, max(0.0, dur - 0.01))
+                self.volume_shortcut_target = 'music'
+                self.logger.info("SHORTCUT: Volume keys now control MUSIC volume")
                 self.music_volume_slider.setEnabled(True)
                 if hasattr(self, "music_volume_label"):
                     self.music_volume_label.setVisible(True)
@@ -349,6 +353,36 @@ class MusicMixin:
                 slider.valueChanged.connect(on_slide)
                 ok.clicked.connect(dlg.accept)
                 cancel.clicked.connect(dlg.reject)
+
+                def dialog_key_press(event):
+                    key = event.key()
+                    step = 0
+                    if key == Qt.Key_Up:
+                        step = 1
+                    elif key == Qt.Key_Down:
+                        step = -1
+                    elif key == Qt.Key_Plus:
+                        step = 5
+                    elif key == Qt.Key_Minus:
+                        step = -5
+                    if step != 0:
+                        slider = self.music_volume_slider
+                        eff_callback = self._music_eff
+                        eff_vol = eff_callback(slider.value())
+                        new_eff_vol = max(0, min(100, eff_vol + step))
+                        if slider.invertedAppearance():
+                            new_raw_val = slider.maximum() + slider.minimum() - new_eff_vol
+                        else:
+                            new_raw_val = new_eff_vol
+                        new_raw_val = max(slider.minimum(), min(slider.maximum(), new_raw_val))
+                        slider.setValue(new_raw_val) 
+                        if audio_player is not None:
+                            audio_player.audio_set_volume(new_eff_vol)
+                        self.logger.debug(f"DIALOG: Music volume set to {new_eff_vol}%")
+                        event.accept()
+                    else:
+                        QDialog.keyPressEvent(dlg, event) # Pass other keys
+                dlg.keyPressEvent = dialog_key_press
                 accepted = dlg.exec_()
                 try:
                     if audio_player is not None:

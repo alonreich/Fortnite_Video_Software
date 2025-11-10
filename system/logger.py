@@ -11,8 +11,6 @@ def setup_logger(base_dir):
     capitalised ``Logs`` used in the original monolith.  The folder is
     created on demand.
     """
-    # Always use a lowercase 'logs' directory to avoid confusion with
-    # the original uppercase 'Logs' from the monolithic implementation.
     log_dir = os.path.join(base_dir, "logs")
     os.makedirs(log_dir, exist_ok=True)
     log_path = os.path.join(log_dir, "Fortnite-Video-Converter.log")

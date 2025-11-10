@@ -13,7 +13,7 @@ class EventsMixin:
         def eventFilter(self, obj, event):
             if obj is self and event.type() == QEvent.KeyPress and event.key() == Qt.Key_Space:
                 self.toggle_play()
-                return True # Consume the event: do not pass it on.
+                return True
             if obj is getattr(self, "_overlay", None) and event.type() == QEvent.Paint:
                 p = QPainter(self._overlay)
                 try:

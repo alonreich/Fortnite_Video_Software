@@ -14,7 +14,6 @@ class ProcessThread(QThread):
                  show_teammates_overlay=False, quality_level: int = 2,
                  bg_music_path=None, bg_music_volume=None, bg_music_offset=0.0, original_total_duration=0.0,
                  disable_fades=False, intro_still_sec: float = 0.0, intro_from_midpoint: bool = False, intro_abs_time: float = None):
-
         super().__init__()
         self.input_path = input_path
         self.start_time = start_time
@@ -222,7 +221,6 @@ class ProcessThread(QThread):
                 try:
                     src_bytes = os.path.getsize(self.input_path)
                     target_file_size_bits = max(1, src_bytes) * 8
-
                     def _probe_audio_kbps():
                         """Probe the audio bitrate of the input using ffprobe located in the Binaries folder."""
                         try:
@@ -292,10 +290,8 @@ class ProcessThread(QThread):
             loot_1440 = (440, 133, 2160, 1288)
             stats_1440 = (280, 31, 2264, 270)
             team_1440  = (160, 190, 74, 26)
-
             def scale_box(box, s):
                 return tuple(int(round(v * s)) for v in box)
-
             def map_hud_box_to_input(box, in_w, in_h, base_w=2560, base_h=1440):
                 w, h, x, y = box
                 if x + w > base_w:
@@ -644,9 +640,22 @@ class ProcessThread(QThread):
             ]
             self.logger.info(f"STEP 1/3 CORE: {' '.join(map(str, core_cmd))}")
             core_progress_weight = 0.8 if self.intro_still_sec > 0 else 1.0
-            proc1 = subprocess.Popen(core_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
-                                     text=True, creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0),
-                                     encoding='utf-8', errors='replace')
+            startupinfo = None
+            if sys.platform == "win32":
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            safe_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            proc1 = subprocess.Popen(
+                core_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+                text=True,
+                creationflags=safe_flags,
+                startupinfo=startupinfo,
+                encoding="utf-8",
+                errors="replace"
+            )
             for line in proc1.stdout:
                 s = line.strip()
                 self.logger.info(s)
@@ -679,12 +688,18 @@ class ProcessThread(QThread):
                     cmd_cpu.append(a)
                 cmd_cpu += ["-preset", "medium", "-crf", "23"]
                 self.logger.info(f"Retry STEP 1/3 with CPU (libx264): {' '.join(cmd_cpu)}")
+                startupinfo = None
+                if sys.platform == "win32":
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 proc1b = subprocess.Popen(
                     cmd_cpu,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
+                    stdin=subprocess.DEVNULL,
                     text=True,
                     creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0),
+                    startupinfo=startupinfo,
                     encoding='utf-8',
                     errors='replace'
                 )
@@ -721,7 +736,7 @@ class ProcessThread(QThread):
                     still_len = max(0.01, float(self.intro_still_sec or 0.1))
                     loop_frames = max(1, int(round(still_len * 60)))
                     base_intro_filter = (
-                        f"select='eq(n\\,0)',format=yuv420p,setsar=1,"
+                        f"select='eq(n\,0)',format=yuv420p,setsar=1,"
                         f"loop=loop={loop_frames}:size=1:start=0,setpts=N/60/TB,fps=60[vintro];"
                         f"anullsrc=r=48000:cl=stereo,atrim=duration={still_len:.3f},asetpts=PTS-STARTPTS[aintro]"
                     )
@@ -741,12 +756,9 @@ class ProcessThread(QThread):
                             "INTRO: abs=%.3fs len=%.3fs (keep aspect)", self.intro_abs_time, still_len
                         )
                     
-                    # Configure VCodec for GPU attempt
                     if os.environ.get('VIDEO_FORCE_CPU') == '1':
-                        # CPU path: match your core step defaults (if forced)
                         vcodec_intro = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23']
                     else:
-                        # GPU path (NVENC), same as before (default attempt)
                         vcodec_intro = [
                             '-c:v', 'h264_nvenc',
                             '-rc', 'cbr',
@@ -774,23 +786,28 @@ class ProcessThread(QThread):
                         "-filter_complex", intro_filter,
                         "-map", "[vintro]", "-map", "[aintro]", "-shortest", intro_path
                     ]
-                    
                     self.logger.info("STEP 2/3 INTRO (GPU/Attempt 1): %s", " ".join(intro_cmd))
+                    startupinfo = None
+                    if sys.platform == "win32":
+                        startupinfo = subprocess.STARTUPINFO()
+                        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                     proc2 = subprocess.Popen(
-                        intro_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,
+                        intro_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        stdin=subprocess.DEVNULL,
+                        universal_newlines=True,
                         creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
-                        encoding="utf-8", errors="replace"
+                        startupinfo=startupinfo,
+                        encoding="utf-8",
+                        errors="replace"
                     )
                     for line in proc2.stdout:
                         self.logger.info(line.rstrip())
                         self.progress_update_signal.emit(95)
                     proc2.wait()
-                    
-                    # Handle GPU failure and CPU fallback
                     if proc2.returncode != 0:
                         self.logger.warning("Intro GPU (NVENC) encoding failed. Retrying with CPU libx264 fallback...")
-                        
-                        # Build CPU fallback command
                         vcodec_intro_cpu = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '23']
                         intro_cmd_cpu = intro_cmd_base + vcodec_intro_cpu + [
                             "-pix_fmt", "yuv420p", "-movflags", "+faststart",
@@ -798,26 +815,31 @@ class ProcessThread(QThread):
                             "-filter_complex", intro_filter,
                             "-map", "[vintro]", "-map", "[aintro]", "-shortest", intro_path
                         ]
-                        
-                        # Execute CPU fallback
                         self.logger.info(f"Retry STEP 2/3 with CPU (libx264): {' '.join(intro_cmd_cpu)}")
+                        startupinfo = None
+                        if sys.platform == "win32":
+                            startupinfo = subprocess.STARTUPINFO()
+                            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                         proc2b = subprocess.Popen(
-                            intro_cmd_cpu, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True,
+                            intro_cmd_cpu,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            stdin=subprocess.DEVNULL,
+                            universal_newlines=True,
                             creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
-                            encoding="utf-8", errors="replace"
+                            startupinfo=startupinfo,
+                            encoding="utf-8",
+                            errors="replace"
                         )
                         for line in proc2b.stdout:
                             self.logger.info(line.rstrip())
                             self.progress_update_signal.emit(95)
                         proc2b.wait()
-                        
                         if proc2b.returncode != 0:
                             self.finished_signal.emit(False, "Intro encode failed (STEP 2/3) after GPU and CPU retries.")
                             return
                         else:
                             self.logger.info("Intro CPU fallback succeeded after GPU failure.")
-                    # If both fail, the return above handles it. If GPU failed and CPU succeeded, we proceed.
-                    # If GPU succeeded, we proceed. No extra check needed here, as the lack of return means success.
                 else:
                     self.logger.info("Skipping Intro: no absolute time resolved (user pick or midpoint).")
                     intro_path = None
@@ -862,8 +884,20 @@ class ProcessThread(QThread):
                  self.finished_signal.emit(False, "No video files found for final step.")
                  return
             self.logger.info(f"STEP 3/3 CONCAT: {' '.join(concat_cmd)}")
+            startupinfo = None
+            if sys.platform == "win32":
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             proc3 = subprocess.Popen(
-                concat_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True
+                concat_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+                universal_newlines=True,
+                creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0),
+                startupinfo=startupinfo,
+                encoding="utf-8",
+                errors="replace"
             )
             for line in proc3.stdout:
                 self.logger.info(line.rstrip())

@@ -18,6 +18,8 @@ ctypes.WinDLL(os.path.join(BIN_DIR, 'libvlc.dll'))
 from ui.main_window import VideoCompressorApp
 
 if __name__ == "__main__":
+    sys.stdout = open(os.devnull, "w")
+    sys.stderr = open(os.devnull, "w")
     ffmpeg_path = os.path.join(BIN_DIR, 'ffmpeg.exe')
     ffprobe_path = os.path.join(BIN_DIR, 'ffprobe.exe')
     try:

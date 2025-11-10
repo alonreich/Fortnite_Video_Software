@@ -93,6 +93,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
 
     def __init__(self, file_path=None):
         super().__init__()
+        self.volume_shortcut_target = 'main'
         self.trim_start = None
         self.trim_end = None
         self.input_file_path = None
@@ -265,21 +266,21 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                 padding: 5px;
             }
             QFrame#dropArea {
-                border: 3px dashed #3498db;
+                border: 3px dashed #3986ae;
                 border-radius: 10px;
                 background-color: #34495e;
                 padding: 20px;
             }
             QSpinBox, QDoubleSpinBox, QSlider {
                 background-color: #4a667a;
-                border: 1px solid #3498db;
+                border: 1px solid #3986ae;
                 border-radius: 5px;
                 padding: 10px;
                 color: #ecf0f1;
                 font-size: 13px;
             }
             QPushButton {
-                background-color: #3498db;
+                background-color: #3986ae;
                 color: #ffffff;
                 border: none;
                 padding: 10px 18px;
@@ -289,7 +290,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             QPushButton:hover { background-color: #2980b9; }
             QPushButton#WhatsappButton { background-color: #25D366; }
             QPushButton#DoneButton { background-color: #e74c3c; }
-            QProgressBar { border: 1px solid #3498db; border-radius: 5px; text-align: center; height: 18px; }
+            QProgressBar { border: 1px solid #3986ae; border-radius: 5px; text-align: center; height: 18px; }
             QProgressBar::chunk { background-color: #2ecc71; }
         """)
 
@@ -431,6 +432,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                           status_method("Could not determine video duration.", "orange")
             except Exception as probe_err:
                  self.logger.error("Error during duration probe: %s", probe_err)
+            self.setFocus()
         QTimer.singleShot(0, _probe_length)
 
     def reset_app_state(self):
@@ -463,8 +465,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             cfg['window_geometry'] = {
                 'x': self.geometry().x(),
                 'y': self.geometry().y(),
-                'w': self.geometry().width(),
-                'h': self.geometry().height()
+                'w': self.geometry().width(),'h': self.geometry().height()
             }
         except Exception:
             pass

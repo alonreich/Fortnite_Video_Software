@@ -200,6 +200,44 @@ class MusicOffsetDialog(QDialog):
         self._restore_geometry()
         self._init_assets(initial_offset or 0.0)
 
+    def keyPressEvent(self, event):
+        """Handle volume shortcuts for the music preview."""
+        key = event.key()
+        modifiers = event.modifiers()
+        step = 0
+        if key == Qt.Key_Up:
+            step = 5 if modifiers == Qt.ShiftModifier else 1
+        elif key == Qt.Key_Down:
+            step = -5 if modifiers == Qt.ShiftModifier else -1
+        elif key == Qt.Key_Plus or (key == Qt.Key_Equal and modifiers == Qt.ShiftModifier):
+            step = 5
+        elif key == Qt.Key_Minus:
+            step = -5
+        elif key == Qt.Key_Equal and modifiers == Qt.NoModifier:
+            step = 5
+        if step == 0:
+            super().keyPressEvent(event)
+            return
+        try:
+            main_window = self.parent()
+            slider = getattr(main_window, "music_volume_slider", None)
+            callback = getattr(main_window, "_on_music_volume_changed", None)
+            if not slider or not callback:
+                super().keyPressEvent(event)
+                return
+            current_val = slider.value()
+            new_val = max(slider.minimum(), min(slider.maximum(), current_val + step))
+            slider.setValue(new_val)
+            callback(new_val)
+            if getattr(self, "_player", None):
+                eff_vol = main_window._music_eff(new_val)
+                self._player.audio_set_volume(eff_vol)
+            event.accept()
+        except Exception as e:
+            (getattr(self, 'logger', __import__('logging').getLogger('MusicOffsetDialog'))
+                .error("Dialog keyPressEvent error: %s", e))
+            super().keyPressEvent(event)
+
     def _restore_geometry(self):
         try:
             parent_obj = self.parent()
@@ -472,12 +510,6 @@ class MusicOffsetDialog(QDialog):
         return int(x0), int(y0), lbl_size.width(), int(scaled_size.height())
 
     def _sync_caret_to_slider(self):
-        """
-        Final version:
-        - X is computed from the actual drawn waveform inside the label
-        - but the line itself spans the *entire dialog height*
-        - so no slider / bottom widget / tight layout can visually "push" it
-        """
         try:
             if not self.wave.isVisible():
                 self._caret.hide()

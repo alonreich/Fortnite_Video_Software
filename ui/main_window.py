@@ -8,8 +8,9 @@ import threading
 import traceback
 from logging.handlers import RotatingFileHandler
 import vlc
-from PyQt5.QtCore import pyqtSignal, QTimer, QUrl
-from PyQt5.QtWidgets import QWidget, QStyle, QFileDialog, QMessageBox
+from PyQt5.QtCore import pyqtSignal, QTimer, QUrl, Qt
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import QWidget, QStyle, QFileDialog, QMessageBox, QShortcut
 from system.config import ConfigManager
 from system.logger import setup_logger
 from ui.parts.ui_builder_mixin import UiBuilderMixin
@@ -197,6 +198,16 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         self.init_ui()
         self._scan_mp3_folder()
         self._update_window_size_in_title()
+
+        def _seek_shortcut(offset_ms):
+            if getattr(self, "input_file_path", None):
+                self.seek_relative_time(offset_ms)
+
+        QShortcut(QKeySequence(Qt.Key_Left), self, lambda: _seek_shortcut(-250))
+        QShortcut(QKeySequence(Qt.Key_Right), self, lambda: _seek_shortcut(250))
+        QShortcut(QKeySequence(Qt.CTRL | Qt.Key_Left), self, lambda: _seek_shortcut(-5))
+        QShortcut(QKeySequence(Qt.CTRL | Qt.Key_Right), self, lambda: _seek_shortcut(5))
+
         if file_path:
             self.handle_file_selection(file_path)
 
@@ -444,6 +455,10 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         self.process_button.setEnabled(False)
         self.progress_update_signal.emit(0)
         self.on_phase_update("Please upload a new video file.")
+        try:
+            self.quality_slider.setValue(2)
+        except AttributeError:
+            pass
         try:
             self.positionSlider.setRange(0, 0)
             self.positionSlider.setValue(0)

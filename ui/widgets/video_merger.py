@@ -17,6 +17,7 @@ if __name__ == "__main__":
     except Exception as _path_err:
         print(f"ERROR [Standalone]: Failed to modify sys.path - {_path_err}", file=sys.stderr)
 from ui.widgets.music_offset_dialog import MusicOffsetDialog
+from ui.widgets.draggable_list_widget import DraggableListWidget
 from PyQt5.QtCore import QProcess, Qt, QTimer, pyqtSignal, QEvent, QUrl, QPoint, QEasingCurve, QPropertyAnimation
 from PyQt5.QtGui import QColor, QFontMetrics, QIcon, QPixmap, QDesktopServices
 from PyQt5.QtWidgets import (
@@ -364,7 +365,18 @@ class VideoMergerWindow(QMainWindow):
         self.add_music_checkbox.toggled.connect(self._on_add_music_toggled)
         self.music_combo.currentIndexChanged.connect(self._on_music_selected)
         self.music_volume_slider.valueChanged.connect(self._on_music_volume_changed)
+        self.listw.itemSelectionChanged.connect(self._on_selection_changed)
         QTimer.singleShot(0, self._update_music_badge)
+
+    def _on_selection_changed(self):
+        for i in range(self.listw.count()):
+            item = self.listw.item(i)
+            widget = self.listw.itemWidget(item)
+            if widget:
+                if item.isSelected():
+                    widget.setStyleSheet("background-color:#6a869a; border-radius:6px;")
+                else:
+                    widget.setStyleSheet("background-color:#4a667a; border-radius:6px;")
 
     def closeEvent(self, e):
         try:
@@ -497,10 +509,6 @@ class VideoMergerWindow(QMainWindow):
                 background: transparent;  /* no double background behind our widget */
                 color: #ecf0f1;
             }
-            QListWidget::item:selected {
-                background: rgba(52,152,219,0.25); /* subtle overlay */
-                color: #ecf0f1;
-            }
             QCheckBox { spacing: 8px; }
             QCheckBox::indicator { width: 16px; height: 16px; }
             QComboBox {
@@ -546,11 +554,9 @@ class VideoMergerWindow(QMainWindow):
         outer.addWidget(title)
         list_container = QHBoxLayout()
         outer.addLayout(list_container)
-        self.listw = QListWidget()
+        self.listw = DraggableListWidget()
         self.listw.setAlternatingRowColors(False)
         self.listw.setSpacing(6)
-        self.listw.setDragDropMode(QListWidget.InternalMove)
-        self.listw.setDefaultDropAction(Qt.MoveAction)
         self.listw.setSelectionMode(QListWidget.SingleSelection) 
         self.listw.setUniformItemSizes(False)
         list_container.addWidget(self.listw, 1)

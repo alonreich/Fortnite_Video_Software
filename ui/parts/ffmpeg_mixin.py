@@ -131,7 +131,6 @@ class FfmpegMixin:
                 cfg['mobile_checked'] = bool(is_mobile_format)
                 cfg['teammates_checked'] = bool(self.teammates_checkbox.isChecked())
                 self.config_manager.save_config(cfg)
-                q_level = int(self.quality_slider.value())
                 music_path, music_vol_linear = self._get_selected_music()
                 self.process_thread = ProcessThread(
                     self.input_file_path, start_time, end_time, self.original_resolution,

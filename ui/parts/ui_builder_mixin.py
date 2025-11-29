@@ -304,6 +304,34 @@ class UiBuilderMixin:
             self.positionSlider.setRange(0, 0)
             self.positionSlider.setFixedHeight(50)
             self.positionSlider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            self.positionSlider.setObjectName("timelineSlider")
+            self.positionSlider.setStyleSheet("""
+                QSlider#timelineSlider::groove:horizontal {
+                    border: 1px solid #565656;
+                    background: #383838;
+                    height: 6px;
+                    margin: 0px;
+                    border-radius: 3px;
+                }
+
+                QSlider#timelineSlider::handle:horizontal {
+                    background: #2196F3; /* A nice, professional blue */
+                    border: 1px solid #1976D2;
+                    width: 3px; /* A thin line */
+                    height: 20px;
+                    line-height: 20px;
+                    margin: -7px 0; /* Center it vertically */
+                    border-radius: 2px;
+                }
+
+                QSlider#timelineSlider::add-page:horizontal {
+                    background: #5c5c5c;
+                }
+
+                QSlider#timelineSlider::sub-page:horizontal {
+                    background: #2196F3;
+                }
+            """)
             self.positionSlider.sliderMoved.connect(self.set_vlc_position)
             self.positionSlider.rangeChanged.connect(lambda *_: self._maybe_enable_process())
             player_col.addWidget(self.positionSlider)

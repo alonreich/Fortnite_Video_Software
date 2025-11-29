@@ -16,10 +16,27 @@ class KeyboardMixin(QWidget):
                 if self._handle_volume_keys(key, event.modifiers()):
                     return True
 
+            if key in (Qt.Key_Return, Qt.Key_Enter):
+                self._on_process_clicked()
+                return True
+
             if getattr(self, "input_file_path", None):
                 if key == Qt.Key_Space:
                     self.toggle_play()
                     return True
+                if key == Qt.Key_BracketLeft:
+                    self.set_start_time()
+                    return True
+                if key == Qt.Key_BracketRight:
+                    self.set_end_time()
+                    return True
+                if event.modifiers() == Qt.ShiftModifier:
+                    if key == Qt.Key_Right:
+                        self.seek_relative_time(3000)
+                        return True
+                    if key == Qt.Key_Left:
+                        self.seek_relative_time(-3000)
+                        return True
         return super().eventFilter(obj, event)
 
     def _handle_volume_keys(self, key, modifiers) -> bool:

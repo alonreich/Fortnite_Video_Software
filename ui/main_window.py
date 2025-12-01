@@ -249,6 +249,32 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         except Exception:
             pass
 
+    def _on_slider_trim_changed(self, start_sec, end_sec):
+        """Handles trim time changes originating from the custom slider."""
+        self.trim_start = start_sec
+        self.trim_end = end_sec
+
+        # Block signals to prevent feedback loop
+        self.start_minute_input.blockSignals(True)
+        self.start_second_input.blockSignals(True)
+        self.end_minute_input.blockSignals(True)
+        self.end_second_input.blockSignals(True)
+
+        try:
+            start_min, start_s = divmod(int(start_sec), 60)
+            self.start_minute_input.setValue(start_min)
+            self.start_second_input.setValue(start_s)
+
+            end_min, end_s = divmod(int(end_sec), 60)
+            self.end_minute_input.setValue(end_min)
+            self.end_second_input.setValue(end_s)
+        finally:
+            # Unblock signals
+            self.start_minute_input.blockSignals(False)
+            self.start_second_input.blockSignals(False)
+            self.end_minute_input.blockSignals(False)
+            self.end_second_input.blockSignals(False)
+
     def _on_trim_spin_changed(self):
         dur = float(self.original_duration or 0.0)
         start = (self.start_minute_input.value() * 60) + self.start_second_input.value()

@@ -1,8 +1,10 @@
-from PyQt5.QtCore import Qt, QRect, QPoint
-from PyQt5.QtGui import QPainter, QColor, QFont, QFontMetrics, QPen
+from PyQt5.QtCore import Qt, QRect, QPoint, pyqtSignal
+from PyQt5.QtGui import QPainter, QColor, QFont, QFontMetrics, QPen, QCursor
 from PyQt5.QtWidgets import QSlider, QStyleOptionSlider, QStyle, QToolTip, QApplication
 
 class TrimmedSlider(QSlider):
+    trim_times_changed = pyqtSignal(float, float)
+
     def __init__(self, parent=None):
         super().__init__(Qt.Horizontal, parent)
         self.trimmed_start = None
@@ -29,26 +31,99 @@ class TrimmedSlider(QSlider):
         self.sliderReleased.connect(self._on_released)
         self._is_pressed = False
         self._show_trim = True
+        self._dragging_handle = None # 'start', 'end', 'playhead', or None
+        self._hovering_handle = None # 'start', 'end', 'playhead', or None
 
     def enable_trim_overlays(self, enabled: bool):
         self._show_trim = bool(enabled)
         self.update()
-    
+
+    def _get_groove_rect(self):
+        opt = QStyleOptionSlider()
+        self.initStyleOption(opt)
+        groove = self.style().subControlRect(QStyle.CC_Slider, opt, QStyle.SC_SliderGroove, self)
+        if groove.width() <= 0:
+            h = 8
+            top = (self.height() - h) // 2
+            groove = QRect(8, top, self.width() - 16, h)
+        return QRect(groove.left(), groove.center().y() - 2, groove.width(), 4)
+
+    def _map_pos_to_value(self, x_pos):
+        groove = self._get_groove_rect()
+        if groove.width() <= 0:
+            return self.minimum()
+        pos = x_pos - groove.left()
+        val = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), pos, groove.width())
+        return val
+
+    def _get_handle_rect(self, handle_type):
+        if self._duration_ms <= 0: return QRect()
+
+        time_sec = self.trimmed_start if handle_type == 'start' else self.trimmed_end
+        if time_sec is None: return QRect()
+
+        groove = self._get_groove_rect()
+        minv, maxv = self.minimum(), self.maximum()
+        
+        def map_to_x(ms):
+            if maxv <= minv: return groove.left()
+            return int(groove.left() + ((ms - minv) / (maxv - minv)) * groove.width())
+
+        x = map_to_x(time_sec * 1000)
+        
+        trim_handle_width = 8 # Match caret width
+        trim_rect_h = groove.height() + 26 # Match caret height
+        trim_rect_y = groove.center().y() - trim_rect_h // 2
+        return QRect(x - (trim_handle_width//2), trim_rect_y, trim_handle_width, trim_rect_h)
+
+    def _get_playhead_rect(self):
+        groove = self._get_groove_rect()
+        minv, maxv = self.minimum(), self.maximum()
+        
+        def map_to_x(ms):
+            if maxv <= minv: return groove.left()
+            return int(groove.left() + ((ms - minv) / (maxv - minv)) * groove.width())
+
+        cx = map_to_x(self.value())
+        playhead_width = 10 
+        playhead_height = groove.height() + 26
+        playhead_y = groove.center().y() - playhead_height // 2
+        return QRect(cx - playhead_width // 2, playhead_y, playhead_width, playhead_height)
+
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:
-            opt = QStyleOptionSlider()
-            self.initStyleOption(opt)
-            groove = self.style().subControlRect(QStyle.CC_Slider, opt, QStyle.SC_SliderGroove, self)
-            groove.translate(0, -12)
-            if groove.width() > 0:
-                x = max(groove.left(), min(e.pos().x(), groove.right()))
-                pos = x - groove.left()
-                val = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), pos, groove.width())
-                self.setSliderPosition(val)
-                self.sliderMoved.emit(val)
+            playhead_rect = self._get_playhead_rect()
+            if playhead_rect.contains(e.pos()):
+                self._dragging_handle = 'playhead'
                 self.update()
+                return
+
+            if self._show_trim:
+                start_handle_rect = self._get_handle_rect('start')
+                end_handle_rect = self._get_handle_rect('end')
+                if start_handle_rect.contains(e.pos()):
+                    self._dragging_handle = 'start'
+                    self.update()
+                    return
+                elif end_handle_rect.contains(e.pos()):
+                    self._dragging_handle = 'end'
+                    self.update()
+                    return
+
+        # Fallback to default behavior if not dragging a handle, but still allow slider to move
+        if e.button() == Qt.LeftButton and not self._dragging_handle:
+            val = self._map_pos_to_value(e.pos().x())
+            self.setSliderPosition(val)
+            self.sliderMoved.emit(val)
+        
         super().mousePressEvent(e)
     
+    def mouseReleaseEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self._dragging_handle = None
+            self.update()
+        super().mouseReleaseEvent(e)
+
     def set_duration_ms(self, ms: int):
         self._duration_ms = max(0, int(ms))
         self.update()
@@ -60,31 +135,72 @@ class TrimmedSlider(QSlider):
         return f"{h:d}:{m:02d}:{s:02d}" if h else f"{m:d}:{s:02d}"
     
     def mouseMoveEvent(self, e):
-        if getattr(self, "_is_pressed", False):
-            opt = QStyleOptionSlider()
-            self.initStyleOption(opt)
-            groove = self.style().subControlRect(QStyle.CC_Slider, opt, QStyle.SC_SliderGroove, self)
-            groove.translate(0, -12)
-            if groove.width() > 0:
-                x = max(groove.left(), min(e.pos().x(), groove.right()))
-                pos = x - groove.left()
-                val = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), pos, groove.width())
-                if val != self.sliderPosition():
-                    self.setSliderPosition(val)
-                    self.sliderMoved.emit(val)
-                    self.update()
+        if self._dragging_handle == 'playhead':
+            new_val = self._map_pos_to_value(e.pos().x())
+            if new_val != self.sliderPosition():
+                self.setSliderPosition(new_val)
+                self.sliderMoved.emit(new_val)
+                self.update()
+            return
+        elif self._dragging_handle in ('start', 'end'):
+            new_val = self._map_pos_to_value(e.pos().x())
+            new_time_sec = (new_val / self.maximum()) * (self._duration_ms / 1000.0) if self.maximum() > 0 else 0
+
+            new_start = self.trimmed_start
+            new_end = self.trimmed_end
+
+            if self._dragging_handle == 'start':
+                new_start = min(new_time_sec, (self.trimmed_end or 0) - 0.01)
+                new_start = max(0.0, new_start)
+            elif self._dragging_handle == 'end':
+                new_end = max(new_time_sec, (self.trimmed_start or 0) + 0.01)
+                new_end = min(self._duration_ms / 1000.0, new_end)
+            
+            if new_start != self.trimmed_start or new_end != self.trimmed_end:
+                self.trimmed_start = new_start
+                self.trimmed_end = new_end
+                self.trim_times_changed.emit(self.trimmed_start, self.trimmed_end)
+            self.update()
+            return
+
+        # Handle hover effects
+        new_hover_handle = None
+        playhead_rect = self._get_playhead_rect()
+        if playhead_rect.contains(e.pos()):
+            new_hover_handle = 'playhead'
+        elif self._show_trim:
+            start_handle_rect = self._get_handle_rect('start')
+            end_handle_rect = self._get_handle_rect('end')
+            if start_handle_rect.contains(e.pos()):
+                new_hover_handle = 'start'
+            elif end_handle_rect.contains(e.pos()):
+                new_hover_handle = 'end'
+
+        if self._hovering_handle != new_hover_handle:
+            self._hovering_handle = new_hover_handle
+            self.setCursor(QCursor(Qt.PointingHandCursor) if self._hovering_handle else QCursor(Qt.ArrowCursor))
+            self.update() # Repaint to show hover effect
+        
+        # Fallback to default behavior if not dragging a handle
+        if self._is_pressed and not self._dragging_handle:
+            val = self._map_pos_to_value(e.pos().x())
+            if val != self.sliderPosition():
+                self.setSliderPosition(val)
+                self.sliderMoved.emit(val)
+
         super().mouseMoveEvent(e)
-        if self._duration_ms > 0 and self.maximum() > 0:
-            x = e.pos().x()
-            val = self.minimum() + (self.maximum() - self.minimum()) * max(0, min(x, self.width())) / max(1, self.width())
-            ms = int((val / max(1, self.maximum())) * self._duration_ms)
-            QToolTip.showText(self.mapToGlobal(e.pos()), self._fmt(ms), self)
+        if self._duration_ms > 0 and self.maximum() > 0 and not self._dragging_handle and not self._hovering_handle:
+            val = self._map_pos_to_value(e.pos().x())
+            ms = (val / max(1, self.maximum())) * self._duration_ms
+            QToolTip.showText(self.mapToGlobal(e.pos()), self._fmt(int(ms)), self)
 
     def _on_pressed(self):
-        self._is_pressed = True
+        if not self._dragging_handle: # Only set _is_pressed if not already dragging a specific handle
+            self._is_pressed = True
 
     def _on_released(self):
         self._is_pressed = False
+        self._dragging_handle = None
 
     def set_trim_times(self, start, end):
         self.trimmed_start = start
@@ -93,123 +209,95 @@ class TrimmedSlider(QSlider):
 
     def paintEvent(self, event):
         super().paintEvent(event)
-        opt = QStyleOptionSlider()
-        self.initStyleOption(opt)
-        groove = self.style().subControlRect(QStyle.CC_Slider, opt, QStyle.SC_SliderGroove, self)
-        if groove.width() <= 0:
-            h = 8
-            top = (self.height() - h) // 2
-            groove = QRect(8, top, self.width() - 16, h)
-        groove.translate(0, -12)
-        minv, maxv = self.minimum(), self.maximum()
-        def map_to_x(ms):
-            if maxv == minv:
-                return groove.left()
-            ratio = (ms - minv) / float(maxv - minv)
-            return int(groove.left() + ratio * groove.width())
-        if (self.trimmed_start is not None) and (self.trimmed_end is not None):
-            start_ms = int(self.trimmed_start * 1000)
-            end_ms   = int(self.trimmed_end   * 1000)
-            start_x  = map_to_x(start_ms)
-            end_x    = map_to_x(end_ms)
-            left_x, right_x = (start_x, end_x) if start_x <= end_x else (end_x, start_x)
-        else:
-            start_x = end_x = left_x = right_x = None
         p = QPainter(self)
         try:
             p.setRenderHint(QPainter.Antialiasing)
             p.fillRect(self.rect(), QColor(44, 62, 80, 255))
+
             f = QFont(self.font())
-            f.setPointSize(max(10, f.pointSize() + 1))
-            p.setFont(f)
-            cx = map_to_x(self.value())
-            bar_w  = 14
-            bar_h  = groove.height() + 22
-            cy   = groove.center().y()
-            top  = max(3, cy - bar_h // 2)
-            bar  = QRect(cx - bar_w // 2, top, bar_w, bar_h)
-            if self._show_trim and (start_x is not None):
-                p.setPen(Qt.NoPen)
-                p.setBrush(QColor(200, 200, 200, 140))
-                if left_x > groove.left():
-                    p.drawRect(groove.left(), groove.top(), left_x - groove.left(), groove.height())
-                if right_x < groove.right():
-                    p.drawRect(right_x, groove.top(), groove.right() - right_x + 1, groove.height())
-                p.setBrush(QColor(46, 204, 113, 180))
-                p.drawRect(left_x, groove.top(), max(0, right_x - left_x), groove.height())
-                p.setBrush(QColor(30, 200, 255))
-                p.drawRect(start_x - bar_w // 2, groove.top() - 2, bar_w, groove.height() + 4)
-                p.setBrush(QColor(30, 200, 255))
-                p.drawRect(end_x - bar_w // 2, groove.top() - 2, bar_w, groove.height() + 4)
-            label_strip_top = groove.bottom() + 1
-            label_strip_h   = 28
+            groove_rect = self._get_groove_rect()
+            minv, maxv = self.minimum(), self.maximum()
+            def map_to_x(ms):
+                if maxv <= minv: return groove_rect.left()
+                return int(groove_rect.left() + ((ms - minv) / (maxv - minv)) * groove_rect.width())
+
+            # Draw base groove (grey)
             p.setPen(Qt.NoPen)
-            p.setBrush(QColor(44, 62, 80, 255))
-            p.drawRect(QRect(groove.left(), label_strip_top, groove.width(), label_strip_h))
-            p.setPen(QColor(30, 40, 50))
-            p.drawLine(groove.left(), label_strip_top, groove.right(), label_strip_top)
-            if getattr(self, "_duration_ms", 0) > 0 and self.maximum() > 0:
-                fm = p.fontMetrics()
-                maxv = max(1, self.maximum())
-                ms_now = int((max(0, self.value()) / maxv) * self._duration_ms)
-                live = self._fmt(ms_now)
-                pad_w, pad_h = 10, 6
-                tw = fm.width(live) + pad_w
-                th = fm.height() + pad_h
-                if cx + 14 + tw <= self.width() - 2:
-                    tx = cx + 14
-                else:
-                    tx = max(2, cx - tw - 14)
-                ty = max(2, label_strip_top - th - 8)
-                rect = QRect(tx, ty, tw, th)
-                p.setPen(QColor(30, 40, 50))
-                p.setBrush(QColor(62, 80, 99, 230))
-                p.drawRoundedRect(rect, 6, 6)
-                p.setPen(QColor(240, 240, 240))
-                p.drawText(rect, Qt.AlignCenter, live)
-            if getattr(self, "_duration_ms", 0) > 0 and self.maximum() > 0:
-                fm = p.fontMetrics()
-                w = self.width()
-                groove_y = label_strip_top + 3
-                dur_s = max(1.0, self._duration_ms / 1000.0)
-                maxv = self.maximum()
-                def x_for(sec):
-                    val = (sec * 1000) / self._duration_ms * maxv
-                    return int(groove.left() + (val / max(1, maxv)) * groove.width())
-                px_per_sec = groove.width() / dur_s
-                target_px  = 70.0
-                candidates = [1, 2, 5, 10, 15, 20, 30, 60, 120, 300, 600, 900, 1200, 1800]
-                label_step = candidates[-1]
-                for s in candidates:
-                    if s * px_per_sec >= target_px:
-                        label_step = s
-                        break
-                minor = max(1, int(round(label_step / 5.0)))
-                major = int(label_step)
-                sec = 0
-                sec = 0
-                pen_minor = QPen(QColor(200, 210, 220, 170), 1)
-                p.setPen(pen_minor)
-                while sec <= int(dur_s + 0.5):
-                    x = x_for(sec)
-                    p.drawLine(x, groove_y, x, groove_y + 4)
-                    sec += minor
-                sec = 0
-                pen_major = QPen(QColor(235, 242, 250), 2)
-                p.setPen(pen_major)
-                while sec <= int(dur_s + 0.5):
-                    x = x_for(sec)
-                    p.drawLine(x, groove_y, x, groove_y + 8)
-                    label = self._fmt(int(sec * 1000))
-                    tw = fm.width(label)
-                    if abs(x - cx) > (tw // 2 + 6):
-                        tx = max(0, min(w - tw, x - tw // 2))
-                        p.drawText(QPoint(tx, groove_y + 10 + fm.ascent()), label)
-                    sec += major
-            pen = QPen(QColor(10, 10, 10)); pen.setWidth(2)
-            p.setPen(pen)
-            p.setBrush(QColor("#531616"))
-            p.drawRoundedRect(bar, 3, 3)
+            p.setBrush(QColor("#3d3d3d"))
+            p.drawRoundedRect(groove_rect, 2, 2)
+
+            # Draw filled "kept" range on top
+            if self.trimmed_start is not None and self.trimmed_end is not None:
+                fill_color = QColor("#59B1D5") # Brighter color
+                fill_color.setAlpha(150)
+                p.setBrush(fill_color)
+                
+                kept_left = map_to_x(self.trimmed_start * 1000)
+                kept_right = map_to_x(self.trimmed_end * 1000)
+                
+                if kept_left > kept_right:
+                    kept_left, kept_right = kept_right, kept_left
+                
+                kept_rect = QRect(kept_left, groove_rect.y(), kept_right - kept_left, groove_rect.height())
+                p.drawRect(kept_rect)
+
+            # Draw timeline labels and ticks
+            if self._duration_ms > 0 and groove_rect.width() > 10:
+                f.setPointSize(max(10, f.pointSize()))
+                p.setFont(f)
+                fm = QFontMetrics(f)
+                
+                major_tick_pixels = 120 
+                num_major_ticks = max(1, int(round(groove_rect.width() / major_tick_pixels)))
+                
+                for i in range(num_major_ticks + 1):
+                    ratio = i / float(num_major_ticks)
+                    ms = self._duration_ms * ratio
+                    x = groove_rect.left() + int(ratio * groove_rect.width())
+                    
+                    is_obscured = False
+                    start_handle_rect = self._get_handle_rect('start')
+                    end_handle_rect = self._get_handle_rect('end')
+                    if start_handle_rect.isValid() and (abs(x - start_handle_rect.center().x()) < (start_handle_rect.width() / 2 + 5) or \
+                       abs(x - end_handle_rect.center().x()) < (end_handle_rect.width() / 2 + 5)):
+                        is_obscured = True
+                    
+                    playhead_rect = self._get_playhead_rect()
+                    if playhead_rect.isValid() and abs(x - playhead_rect.center().x()) < (playhead_rect.width() / 2 + 5):
+                        is_obscured = True
+
+                    if not is_obscured:
+                        p.setPen(QColor(180, 180, 180))
+                        p.drawLine(x, groove_rect.bottom() + 1, x, groove_rect.bottom() + 6)
+                        
+                        time_str = self._fmt(int(ms))
+                        text_width = fm.horizontalAdvance(time_str)
+                        p.drawText(x - text_width // 2, groove_rect.bottom() + 18, time_str)
+
+            # Draw trim handles
+            for handle_type in ['start', 'end']:
+                handle_rect = self._get_handle_rect(handle_type)
+                if not handle_rect.isValid(): continue
+
+                color = QColor(0, 0, 0, 150)
+                if self._hovering_handle == handle_type or self._dragging_handle == handle_type:
+                    color = QColor(230, 126, 34, 200)
+                
+                p.setPen(Qt.NoPen)
+                p.setBrush(color)
+                p.drawRoundedRect(handle_rect, 4, 4)
+
+            # Draw playhead
+            playhead_rect = self._get_playhead_rect()
+            if playhead_rect.isValid():
+                playhead_color = QColor("#59B1D5") # Brighter color
+                if self._hovering_handle == 'playhead' or self._dragging_handle == 'playhead':
+                    playhead_color = QColor(255, 170, 0, 255)
+                
+                p.setPen(Qt.NoPen)
+                p.setBrush(playhead_color)
+                p.drawRoundedRect(playhead_rect, 4, 4)
+
         finally:
             if p.isActive():
                 p.end()

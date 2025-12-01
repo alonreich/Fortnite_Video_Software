@@ -285,160 +285,105 @@ class ProcessThread(QThread):
             healthbar_crop_string = ""
             loot_area_crop_string = ""
             stats_area_crop_string = ""
-            HB_UP_1440 = 8
-            hb_1440   = (370, 65, 60, max(0, 1325 - HB_UP_1440))
-            loot_1440 = (440, 133, 2160, 1288)
-            stats_1440 = (280, 31, 2264, 270)
-            team_1440  = (160, 190, 74, 26)
+            # New user-provided coordinates for 2560x1440
+            # healthbar: x=0, y=1261, w=302, h=117
+            hb_1080   = (320, 56, 35, 977)
+            loot_1080 = (348, 73, 1543, 975)
+            stats_1080 = (58, 102, 1685, 23)
+            team_1080  = (174, 161, 14, 801)
+
             def scale_box(box, s):
                 return tuple(int(round(v * s)) for v in box)
-            def map_hud_box_to_input(box, in_w, in_h, base_w=2560, base_h=1440):
-                w, h, x, y = box
-                if x + w > base_w:
-                    x = max(0, base_w - w)
-                if y + h > base_h:
-                    y = max(0, base_h - h)
-                v      = in_h / float(base_h)
-                safe_w = base_w * v
-                pad_x  = max(0.0, (in_w - safe_w) / 2.0)
-                w2 = int(round(w * v))
-                h2 = int(round(h * v))
-                x2 = int(round(pad_x + x * v))
-                y2 = int(round(y * v))
-                x2 = max(0, min(in_w - w2, x2))
-                y2 = max(0, min(in_h - h2, y2))
-                return (w2, h2, x2, y2)
+
+            in_w, in_h = map(int, self.original_resolution.split('x'))
+
             if self.original_resolution == "1920x1080":
-                hb    = scale_box(hb_1440, 0.75)
-                loot  = scale_box(loot_1440, 0.75)
-                stats = scale_box(stats_1440, 0.75)
-                team  = scale_box(team_1440, 0.75)
+                hb, loot, stats, team = hb_1080, loot_1080, stats_1080, team_1080
             elif self.original_resolution == "2560x1440":
-                hb, loot, stats, team = hb_1440, loot_1440, stats_1440, team_1440
+                scale_1440 = 2560 / 1920
+                hb    = scale_box(hb_1080, scale_1440)
+                loot  = scale_box(loot_1080, scale_1440)
+                stats = scale_box(stats_1080, scale_1440)
+                team  = scale_box(team_1080, scale_1440)
             elif self.original_resolution == "3440x1440":
-                hb    = (350, 130,  720, 1260)
-                loot  = (664, 135, 2890, 1205)
-                stats = (360,  31, 3030,  440)
-                team  = (260, 290,  110,   26)
+                hb = map_hud_box_to_input(hb_1080, in_w, in_h, base_w=1920, base_h=1080)
+                loot = map_hud_box_to_input(loot_1080, in_w, in_h, base_w=1920, base_h=1080)
+                stats = map_hud_box_to_input(stats_1080, in_w, in_h, base_w=1920, base_h=1080)
+                team = map_hud_box_to_input(team_1080, in_w, in_h, base_w=1920, base_h=1080)
             elif self.original_resolution == "3840x2160":
-                hb    = scale_box(hb_1440, 1.5)
-                loot  = scale_box(loot_1440, 1.5)
-                stats = scale_box(stats_1440, 1.5)
-                team  = scale_box(team_1440, 1.5)
+                scale_2160 = 3840 / 1920
+                hb    = scale_box(hb_1080, scale_2160)
+                loot  = scale_box(loot_1080, scale_2160)
+                stats = scale_box(stats_1080, scale_2160)
+                team  = scale_box(team_1080, scale_2160)
             else:
-                hb, loot, stats, team = hb_1440, loot_1440, stats_1440, team_1440
+                hb, loot, stats, team = hb_1080, loot_1080, stats_1080, team_1080
             healthbar_crop_string  = f"{hb[0]}:{hb[1]}:{hb[2]}:{hb[3]}"
             loot_area_crop_string  = f"{loot[0]}:{loot[1]}:{loot[2]}:{loot[3]}"
             stats_area_crop_string = f"{stats[0]}:{stats[1]}:{stats[2]}:{stats[3]}"
             team_crop_string       = f"{team[0]}:{team[1]}:{team[2]}:{team[3]}"
-            s = 0.75 if self.original_resolution == "1920x1080" else (1.5 if self.original_resolution == "3840x2160" else 1.0)
-            healthbar_scaled_width  = int(round(370 * 0.85 * 2 * s))
-            healthbar_scaled_height = int(round(65  * 0.85 * 2 * s))
-            loot_scaled_width       = int(round(440 * 0.85 * 1.3 * 1.2 * s))
-            loot_scaled_height      = int(round(133 * 0.85 * 1.3 * 1.2 * s))
-            stats_scaled_width      = int(round(stats[0] * 1.8 * s))
-            stats_scaled_height     = int(round(stats[1] * 1.8 * s))
-            team_scaled_width       = int(round(team[0]  * 1.32 * s))
-            team_scaled_height      = int(round(team[1]  * 1.32 * s))
-            if self.original_resolution == "3440x1440":
-                healthbar_scaled_width,  healthbar_scaled_height  = 520, 125
-                loot_scaled_width,       loot_scaled_height       = 715, 140
-                stats_scaled_width,      stats_scaled_height      = 500,  50
-                team_scaled_width,       team_scaled_height       = 211, 280
+            
             main_width  = 1150
             main_height = 1920
             if self.is_mobile_format:
-                HB_OVERLAY_UP_1440 = 14
-                hb_overlay_up = int(round(HB_OVERLAY_UP_1440 * s))
-                hb_overlay_y  = max(0, int(round(main_height - healthbar_scaled_height - hb_overlay_up)))
-                loot_overlay_x = int(round(main_width - loot_scaled_width - 85))
-                loot_overlay_y = int(round(main_height - loot_scaled_height + 70))
-                STATS_MARGIN_ABOVE_1440 = 8
-                stats_margin = int(round(STATS_MARGIN_ABOVE_1440 * s))
-                stats_overlay_x = int(round((main_width - stats_scaled_width) / 2))
-                base_y = min(hb_overlay_y, loot_overlay_y)
-                stats_overlay_y = max(0, base_y - stats_scaled_height - stats_margin)
-                TEAM_LEFT_MARGIN_1440 = 0
-                TEAM_TOP_MARGIN_1440  = 0
-                team_overlay_x = int(round(TEAM_LEFT_MARGIN_1440 * s))
-                team_overlay_y = int(round(TEAM_TOP_MARGIN_1440  * s))
-                if self.original_resolution == "3440x1440":
-                    if self.show_teammates_overlay:
-                        video_filter_cmd = (
-                            "split=5[main][lootbar][healthbar][stats][team];"
-                            f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                            "[lootbar]crop=664:135:2890:1205,scale=715:140,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
-                            "[healthbar]crop=350:130:720:1260,scale=520:125,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                            "[stats]crop=360:31:3030:440,scale=500:50,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
-                            "[team]crop=260:290:110:26,scale=211:280,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];"
-                            "[main_cropped][lootbar_scaled]overlay=463:1790[t1];"
-                            "[t1][healthbar_scaled]overlay=0:H-h-0[t2];"
-                            "[t2][stats_scaled]overlay=323:1745[t3];"
-                            "[t3][team_scaled]overlay=0:0"
-                        )
-                    else:
-                        video_filter_cmd = (
-                            "split=4[main][lootbar][healthbar][stats];"
-                            f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                            "[lootbar]crop=664:135:2890:1205,scale=715:140,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
-                            "[healthbar]crop=350:130:720:1260,scale=520:125,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                            "[stats]crop=360:31:3030:440,scale=500:50,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
-                            "[main_cropped][lootbar_scaled]overlay=463:1790[t1];"
-                            "[t1][healthbar_scaled]overlay=0:H-h-0[t2];"
-                            "[t2][stats_scaled]overlay=323:1745"
-                        )
-                elif self.original_resolution == "1920x1080":
-                    if self.show_teammates_overlay:
-                        video_filter_cmd = (
-                            "split=5[main][lootbar][healthbar][stats][team];"
-                            f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                            "[lootbar]crop=330:120:1814:1082,scale=738:263,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
-                            "[healthbar]crop=278:49:45:988,scale=690:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                            "[stats]crop=210:23:1698:202,scale=497:54,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
-                            "[team]crop=120:142:56:20,scale=273:324,format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];"
-                            "[main_cropped][lootbar_scaled]overlay=445:1800[t1];"
-                            "[t1][healthbar_scaled]overlay=-100:1795[t2];"
-                            "[t2][stats_scaled]overlay=347:1745[t3];"
-                            "[t3][team_scaled]overlay=0:0"
-                        )
-                    else:
-                        video_filter_cmd = (
-                            "split=4[main][lootbar][healthbar][stats];"
-                            f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                            "[lootbar]crop=330:120:1814:1082,scale=738:263,format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
-                            "[healthbar]crop=278:49:45:988,scale=690:121,format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                            "[stats]crop=210:23:1698:202,scale=497:54,format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
-                            "[main_cropped][lootbar_scaled]overlay=445:1800[t1];"
-                            "[t1][healthbar_scaled]overlay=-100:1795[t2];"
-                            "[t2][stats_scaled]overlay=347:1745"
-                        )
+                # Define base scale factors for overlays from user input
+                healthbar_scale = 1.77
+                loot_scale = 1.661
+                stats_scale = 2.0
+                team_scale = 1.61
+
+                # Calculate scaled sizes
+                healthbar_scaled_width  = int(round(hb_1080[0] * healthbar_scale))
+                healthbar_scaled_height = int(round(hb_1080[1] * healthbar_scale))
+                loot_scaled_width       = int(round(loot_1080[0] * loot_scale))
+                loot_scaled_height      = int(round(loot_1080[1] * loot_scale))
+                stats_scaled_width      = int(round(stats_1080[0] * stats_scale))
+                stats_scaled_height     = int(round(stats_1080[1] * stats_scale))
+                team_scaled_width       = int(round(team_1080[0] * team_scale))
+                team_scaled_height      = int(round(team_1080[1] * team_scale))
+
+                # Use hardcoded positions from user input
+                healthbar_overlay_x = -1
+                healthbar_overlay_y = 1692
+                loot_overlay_x = 571
+                loot_overlay_y = 1685
+                stats_overlay_x = 1004
+                stats_overlay_y = 62
+                team_overlay_x = 32
+                team_overlay_y = 1434
+
+                # Simplified scale strings
+                lootbar_scale_str = f"scale={loot_scaled_width}:{loot_scaled_height}"
+                healthbar_scale_str = f"scale={healthbar_scaled_width}:{healthbar_scaled_height}"
+                stats_scale_str = f"scale={stats_scaled_width}:{stats_scaled_height}"
+                team_scale_str = f"scale={team_scaled_width}:{team_scaled_height}"
+                    
+                common_splits = "split=4[main][lootbar][healthbar][stats]"
+                common_filters = (
+                    f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
+                    f"[lootbar]crop={loot_area_crop_string},{lootbar_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
+                    f"[healthbar]crop={healthbar_crop_string},{healthbar_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
+                    f"[stats]crop={stats_area_crop_string},{stats_scale_str},format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
+                )
+                common_overlays = (
+                    f"[main_cropped][lootbar_scaled]overlay={loot_overlay_x}:{loot_overlay_y}[t1];"
+                    f"[t1][healthbar_scaled]overlay={healthbar_overlay_x}:{healthbar_overlay_y}[t2];"
+                    f"[t2][stats_scaled]overlay={stats_overlay_x}:{stats_overlay_y}"
+                )
+
+                if self.show_teammates_overlay:
+                    video_filter_cmd = (
+                        f"split=5[main][lootbar][healthbar][stats][team];"
+                        f"{common_filters}"
+                        f"[team]crop={team_crop_string},{team_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];"
+                        f"{common_overlays}[t3];"
+                        f"[t3][team_scaled]overlay={team_overlay_x}:{team_overlay_y}"
+                    )
                 else:
-                    if self.show_teammates_overlay:
-                        video_filter_cmd = (
-                            f"split=5[main][lootbar][healthbar][stats][team];"
-                            f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                            f"[lootbar]crop={loot_area_crop_string},scale={loot_scaled_width * 1.2:.0f}:{loot_scaled_height * 1.2:.0f},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
-                            f"[healthbar]crop={healthbar_crop_string},scale={healthbar_scaled_width * 1.1:.0f}:{healthbar_scaled_height * 1.1:.0f},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                            f"[stats]crop={stats_area_crop_string},scale={stats_scaled_width}:{stats_scaled_height},format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
-                            f"[team]crop={team_crop_string},scale={team_scaled_width}:{team_scaled_height},format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];"
-                            f"[main_cropped][lootbar_scaled]overlay={loot_overlay_x}:{loot_overlay_y}[t1];"
-                            f"[t1][healthbar_scaled]overlay=-100:{hb_overlay_y}[t2];"
-                            f"[t2][stats_scaled]overlay={stats_overlay_x}:{stats_overlay_y}[t3];"
-                            f"[t3][team_scaled]overlay={team_overlay_x}:{team_overlay_y}"
-                        )
-                    else:
-                        video_filter_cmd = (
-                            f"split=4[main][lootbar][healthbar][stats];"
-                            f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                            f"[lootbar]crop={loot_area_crop_string},scale={loot_scaled_width * 1.2:.0f}:{loot_scaled_height * 1.2:.0f},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
-                            f"[healthbar]crop={healthbar_crop_string},scale={healthbar_scaled_width * 1.1:.0f}:{healthbar_scaled_height * 1.1:.0f},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                            f"[stats]crop={stats_area_crop_string},scale={stats_scaled_width}:{stats_scaled_height},format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
-                            f"[main_cropped][lootbar_scaled]overlay={loot_overlay_x}:{loot_overlay_y}[t1];"
-                            f"[t1][healthbar_scaled]overlay=-100:{hb_overlay_y}[t2];"
-                            f"[t2][stats_scaled]overlay={stats_overlay_x}:{stats_overlay_y}"
-                        )
+                    video_filter_cmd = f"{common_splits};{common_filters}{common_overlays}"
+
                 self.logger.info(f"Mobile portrait mode: loot={loot_area_crop_string}, health={healthbar_crop_string}, "
-                                f"stats={stats_area_crop_string}, alpha=0.8, hb_up={hb_overlay_up}px, "
+                                f"stats={stats_area_crop_string}, alpha=0.8, "
                                 f"stats_xy=({stats_overlay_x},{stats_overlay_y})")
                 self.status_update_signal.emit("Optimizing for mobile: Applying portrait crop.")
             else:
@@ -459,6 +404,7 @@ class ProcessThread(QThread):
                         target_resolution = "scale='min(960,iw)':-2"
                         self.status_update_signal.emit("Bad Quality: targeting ~15–20MB and smaller resolution.")
                 video_filter_cmd = f"fps=60,{target_resolution}"
+
             if self.speed_factor != 1.0:
                 speed_filter = f"setpts=PTS/{self.speed_factor}"
                 if video_filter_cmd:

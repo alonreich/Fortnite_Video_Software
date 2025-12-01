@@ -52,15 +52,13 @@ class TrimMixin:
 
         def _update_trim_widgets_from_trim_times(self):
             if self.trim_start is not None:
-                start_total = int(round(self.trim_start))
-                sm = start_total // 60
-                ss = start_total % 60
+                sm = int(self.trim_start // 60)
+                ss = self.trim_start % 60
                 self.start_minute_input.setValue(sm)
                 self.start_second_input.setValue(ss)
             if self.trim_end is not None:
-                end_total = int(round(self.trim_end))
-                em = end_total // 60
-                es = end_total % 60
+                em = int(self.trim_end // 60)
+                es = self.trim_end % 60
                 self.end_minute_input.setValue(em)
                 self.end_second_input.setValue(es)
 

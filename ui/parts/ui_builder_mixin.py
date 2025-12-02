@@ -332,6 +332,7 @@ class UiBuilderMixin:
                     background: #2196F3;
                 }
             """)
+            self.tooltip_manager.add_tooltip(self.positionSlider, "Seek: ← →\nFast Seek: Shift + ←/→\nFine Seek: Ctrl + ←/→")
             self.positionSlider.sliderMoved.connect(self.set_vlc_position)
             self.positionSlider.rangeChanged.connect(lambda *_: self._maybe_enable_process())
             self.positionSlider.trim_times_changed.connect(self._on_slider_trim_changed)
@@ -345,6 +346,7 @@ class UiBuilderMixin:
             self.volume_slider.setTickPosition(QSlider.TicksBothSides)
             self.volume_slider.setTracking(True)
             self.volume_slider.setInvertedAppearance(True)
+            self.tooltip_manager.add_tooltip(self.volume_slider, "Adjust Volume: ↑ / ↓\nLarge Step: Shift + ↑ / ↓")
             try:
                 eff = int(self.config_manager.config.get('last_volume', 100))
             except Exception:
@@ -405,9 +407,11 @@ class UiBuilderMixin:
             self._top_row = top_row
             left_layout.addLayout(self._top_row)
             self.playPauseButton = QPushButton("Play")
+            self.playPauseButton.setObjectName("playPauseButton")
             self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-            self.playPauseButton.clicked.connect(self.toggle_play)
+            self.playPauseButton.clicked.connect(self.toggle_play_pause)
             self.playPauseButton.setFocusPolicy(Qt.NoFocus)
+            self.tooltip_manager.add_tooltip(self.playPauseButton, "Spacebar")
             self.playPauseButton.setStyleSheet("""
                 QPushButton {
                     background-color: #59A06D;
@@ -448,11 +452,15 @@ class UiBuilderMixin:
             self.end_minute_input.valueChanged.connect(self._on_trim_spin_changed)
             self.end_second_input.valueChanged.connect(self._on_trim_spin_changed)
             self.start_trim_button = QPushButton("Set Start")
+            self.start_trim_button.setObjectName("startTrimButton")
             self.start_trim_button.clicked.connect(self.set_start_time)
             self.start_trim_button.setFocusPolicy(Qt.NoFocus)
+            self.tooltip_manager.add_tooltip(self.start_trim_button, "[")
             self.end_trim_button = QPushButton("Set End")
+            self.end_trim_button.setObjectName("endTrimButton")
             self.end_trim_button.clicked.connect(self.set_end_time)
             self.end_trim_button.setFocusPolicy(Qt.NoFocus)
+            self.tooltip_manager.add_tooltip(self.end_trim_button, "]")
             for spin in (self.start_minute_input, self.start_second_input, self.end_minute_input, self.end_second_input):
                 spin.setMaximumWidth(48)
             self.start_trim_button.setFixedWidth(90)
@@ -511,6 +519,13 @@ class UiBuilderMixin:
             self.quality_slider.setMinimumWidth(150)
             self.quality_slider.setMaximumWidth(300)
             self.quality_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            self.tooltip_manager.add_tooltip(self.quality_slider,
+                "Bad = 10MB\n"
+                "Okay = 15MB\n"
+                "Standard = 25MB\n"
+                "Good = 40MB\n"
+                "Maximum = Original Video Size"
+            )
             _knob = self.positionSlider.palette().highlight().color().name()
             self.quality_slider.setObjectName("qualitySlider")
             self.quality_slider.setStyleSheet(
@@ -549,7 +564,9 @@ class UiBuilderMixin:
                 self.logger.info(f"OPTION: Video Output Quality -> {titles[idx]}")
             self.quality_slider.valueChanged.connect(_on_quality_changed)
             self.process_button = QPushButton("Process Video")
+            self.process_button.setObjectName("processButton")
             self.process_button.setFixedSize(200, 70)
+            self.tooltip_manager.add_tooltip(self.process_button, "Enter")
             self._original_process_btn_style = """
                 QPushButton {
                     background-color: #148c14;
@@ -636,6 +653,14 @@ class UiBuilderMixin:
             vbox.addWidget(self.quality_slider, alignment=Qt.AlignHCenter)
             vbox.addWidget(self.quality_value_label, alignment=Qt.AlignHCenter)
             self.quality_container = QWidget(); self.quality_container.setLayout(vbox)
+            self.quality_container.setObjectName("qualityContainer")
+            self.tooltip_manager.add_tooltip(self.quality_container,
+                "Bad = 10MB\n"
+                "Okay = 15MB\n"
+                "Standard = 25MB\n"
+                "Good = 40MB\n"
+                "Maximum = Original Video Size"
+            )
             self.quality_container.setMinimumWidth(0)
             self.quality_container.setMaximumWidth(340)
             self.quality_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)

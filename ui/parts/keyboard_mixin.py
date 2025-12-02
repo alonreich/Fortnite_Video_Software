@@ -1,3 +1,6 @@
+import os
+import sys
+import subprocess
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QWidget, QApplication
 
@@ -5,12 +8,37 @@ from PyQt5.QtWidgets import QWidget, QApplication
 class KeyboardMixin(QWidget):
     """Handles global keyboard shortcuts for the main window."""
 
+    def _launch_dev_tool(self):
+        """Launches the crop tool and closes the main application."""
+        try:
+            tool_path = os.path.join(self.base_dir, 'Developer_Tools', 'Crops_Tool.py')
+            if not os.path.exists(tool_path):
+                if hasattr(self, "logger"):
+                    self.logger.error("Developer tool not found at: %s", tool_path)
+                return
+
+            # Launch the tool as a new process using the current Python executable
+            subprocess.Popen([sys.executable, tool_path], cwd=os.path.dirname(tool_path))
+            
+            if hasattr(self, "logger"):
+                self.logger.info("Launching developer tool: %s", tool_path)
+
+            # Close the main application
+            self.close()
+        except Exception as e:
+            if hasattr(self, "logger"):
+                self.logger.exception("Failed to launch developer tool: %s", e)
+
     def eventFilter(self, obj, event):
         if event.type() == QEvent.KeyPress:
             if QApplication.activeModalWidget() is not None:
                 return super().eventFilter(obj, event)
             
             key = event.key()
+
+            if key == Qt.Key_F12:
+                self._launch_dev_tool()
+                return True
 
             if key in (Qt.Key_Up, Qt.Key_Down):
                 if self._handle_volume_keys(key, event.modifiers()):
@@ -22,7 +50,7 @@ class KeyboardMixin(QWidget):
 
             if getattr(self, "input_file_path", None):
                 if key == Qt.Key_Space:
-                    self.toggle_play()
+                    self.toggle_play_pause()
                     return True
                 if key == Qt.Key_BracketLeft:
                     self.set_start_time()
@@ -83,7 +111,15 @@ class KeyboardMixin(QWidget):
         current_time = self.vlc_player.get_time()
         new_time = max(0, current_time + ms_offset)
         max_time = self.vlc_player.get_length()
-        new_time = min(new_time, max_time)
+        if max_time > 0:
+            new_time = min(new_time, max_time)
+
         self.set_vlc_position(new_time)
+
+        # If the player is not playing (i.e., paused), the update timer is off.
+        # We need to manually update the slider to keep the UI in sync.
+        if not self.vlc_player.is_playing():
+            self.positionSlider.setValue(new_time)
+
         if hasattr(self, "logger"):
             self.logger.debug("KEYBOARD: Seeked %dms to %dms", ms_offset, new_time)

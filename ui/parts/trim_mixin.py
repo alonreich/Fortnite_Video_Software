@@ -20,45 +20,68 @@ class TrimMixin:
             self.positionSlider.set_trim_times(self.trim_start, self.trim_end)
 
         def set_start_time(self):
-            pos_ms = self.vlc_player.get_time()
+            # Use the slider's current value for perfect sync with the UI caret
+            pos_ms = self.positionSlider.value()
             pos_s = pos_ms / 1000.0
-            if self.original_duration and pos_s >= self.original_duration:
-                pos_s = max(0.0, self.original_duration - 0.1)
+
+            # If the new start time is after the existing end time, reset the end time.
+            if self.trim_end is not None and pos_s > self.trim_end:
+                self.trim_end = self.original_duration
+
+            if pos_s < 0:
+                pos_s = 0
+
             self.trim_start = pos_s
-            self.logger.info("TRIM: start set at %.3fs", self.trim_start)
+            if hasattr(self, "logger"):
+                self.logger.info("TRIM: start set at %.3fs from slider", self.trim_start)
             self._update_trim_widgets_from_trim_times()
             self.positionSlider.set_trim_times(self.trim_start, self.trim_end)
 
         def set_end_time(self):
-            dur = float(self.original_duration or 0.0)
-            pos_ms = self.vlc_player.get_time()
+            # Use the slider's current value for perfect sync with the UI caret
+            pos_ms = self.positionSlider.value()
             pos_s = pos_ms / 1000.0
-            if dur > 0.0:
-                pos_s = max(0.0, min(pos_s, dur))
-                eps = max(0.01, min(0.2, dur * 0.001))
-                if self.trim_start is None:
-                    self.trim_start = 0.0
-                pos_s = min(dur, max(pos_s, self.trim_start + eps))
-                if pos_s >= dur and self.trim_start >= dur - eps:
-                    self.trim_start = max(0.0, dur - eps)
-                    pos_s = dur
+
+            # Basic validation
+            if self.trim_start is not None and pos_s < self.trim_start:
+                pos_s = self.trim_start
+            if self.original_duration > 0 and pos_s > self.original_duration:
+                pos_s = self.original_duration
+
             self.trim_end = pos_s
+            if hasattr(self, "logger"):
+                self.logger.info("TRIM: end set at %.3fs from slider", self.trim_end)
+
             self._update_trim_widgets_from_trim_times()
             self.positionSlider.set_trim_times(self.trim_start, self.trim_end)
+
             if self.vlc_player.is_playing():
                 self.vlc_player.pause()
                 self.playPauseButton.setText("Play")
                 self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
         def _update_trim_widgets_from_trim_times(self):
-            if self.trim_start is not None:
-                sm = int(self.trim_start // 60)
-                ss = self.trim_start % 60
-                self.start_minute_input.setValue(sm)
-                self.start_second_input.setValue(ss)
-            if self.trim_end is not None:
-                em = int(self.trim_end // 60)
-                es = self.trim_end % 60
-                self.end_minute_input.setValue(em)
-                self.end_second_input.setValue(es)
+            # Block signals to prevent a feedback loop with _on_trim_spin_changed
+            self.start_minute_input.blockSignals(True)
+            self.start_second_input.blockSignals(True)
+            self.end_minute_input.blockSignals(True)
+            self.end_second_input.blockSignals(True)
+
+            try:
+                if self.trim_start is not None:
+                    sm = int(self.trim_start // 60)
+                    ss = self.trim_start % 60
+                    self.start_minute_input.setValue(sm)
+                    self.start_second_input.setValue(ss)
+                if self.trim_end is not None:
+                    em = int(self.trim_end // 60)
+                    es = self.trim_end % 60
+                    self.end_minute_input.setValue(em)
+                    self.end_second_input.setValue(es)
+            finally:
+                # Always unblock signals
+                self.start_minute_input.blockSignals(False)
+                self.start_second_input.blockSignals(False)
+                self.end_minute_input.blockSignals(False)
+                self.end_second_input.blockSignals(False)
 

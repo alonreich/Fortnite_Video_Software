@@ -13,6 +13,7 @@ from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import QWidget, QStyle, QFileDialog, QMessageBox, QShortcut
 from system.config import ConfigManager
 from system.logger import setup_logger
+from ui.widgets.tooltip_manager import ToolTipManager
 from ui.parts.ui_builder_mixin import UiBuilderMixin
 from ui.parts.phase_overlay_mixin import PhaseOverlayMixin
 from ui.parts.events_mixin import EventsMixin
@@ -72,9 +73,9 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         """
         try:
             if getattr(self, "vlc_player", None):
-                self.vlc_player.stop()
+                self.vlc_player.pause()
             self.positionSlider.blockSignals(True)
-            self.positionSlider.setValue(0)
+            self.positionSlider.setValue(self.positionSlider.maximum())
             self.positionSlider.blockSignals(False)
             if getattr(self, "playPauseButton", None):
                 self.playPauseButton.setText("Play")
@@ -94,12 +95,15 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
 
     def __init__(self, file_path=None):
         super().__init__()
+        self._is_seeking_from_end = False
+        self.tooltip_manager = ToolTipManager(self)
         self.volume_shortcut_target = 'main'
         self.trim_start = None
         self.trim_end = None
         self.input_file_path = None
         self.original_duration = 0.0
         self.original_resolution = ""
+        self.is_playing = False
         self.is_processing = False
         self.script_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(
             os.path.abspath(__file__))
@@ -194,7 +198,6 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             self.setMinimumSize(1150, 575)
         self._music_files = []
         self.set_style()
-        self.installEventFilter(self)
         self.init_ui()
         self._scan_mp3_folder()
         self._update_window_size_in_title()

@@ -27,19 +27,40 @@ class PlayerMixin:
                 if int(status) == 7:
                     self._safe_stop_playback()
 
-        def toggle_play(self):
+        def _finish_seek_from_end(self):
+            """Callback to finish the seek operation, re-enabling the UI."""
+            self.vlc_player.pause()
+            self.playPauseButton.setEnabled(True)
+            self._is_seeking_from_end = False
+
+        def toggle_play_pause(self):
+            """Toggles play/pause, handling restarts from the end and ignoring clicks during seeks."""
+            if getattr(self, '_is_seeking_from_end', False):
+                return  # Ignore clicks while seek is in progress
+
             if not getattr(self, "input_file_path", None):
                 return
-            if self.vlc_player.is_playing():
+
+            player_state = self.vlc_player.get_state()
+
+            if player_state == vlc.State.Playing:
                 self.vlc_player.pause()
                 self.playPauseButton.setText("Play")
                 self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-            else:
-                self.vlc_player.play()
+                if self.timer.isActive():
+                    self.timer.stop()
+            else:  # Paused, Stopped, Ended, etc.
+                pos = self.vlc_player.get_position()
+                if player_state == vlc.State.Ended or (player_state == vlc.State.Paused and pos >= 0.999):
+                    self.vlc_player.stop()
+                    self.vlc_player.play()
+                else:
+                    self.vlc_player.play()
+
                 self.playPauseButton.setText("Pause")
                 self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
-            if not self.timer.isActive():
-                self.timer.start(100)
+                if not self.timer.isActive():
+                    self.timer.start(100)
 
         def update_player_state(self):
             if self.vlc_player:
@@ -49,27 +70,48 @@ class PlayerMixin:
                         self.positionSlider.blockSignals(True)
                         self.positionSlider.setValue(current_time)
                         self.positionSlider.blockSignals(False)
-                if self.vlc_player.is_playing():
-                    self.playPauseButton.setText("Pause")
-                    self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+                
+                player_state = self.vlc_player.get_state()
+                if player_state == vlc.State.Playing:
+                    if not self.is_playing:
+                        self.playPauseButton.setText("Pause")
+                        self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+                        self.is_playing = True
                 else:
-                    self.playPauseButton.setText("Play")
-                    self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+                    if self.is_playing:
+                        self.playPauseButton.setText("Play")
+                        self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+                        self.is_playing = False
+
 
         def set_vlc_position(self, position):
-            """Sets the player position. If stopped, play/pause briefly to update state."""
+            """Sets the player position, handling the fragile seek-from-end case."""
             try:
                 p = int(position)
             except Exception:
                 p = position
             try:
-                is_stopped = self.vlc_player.get_state() == vlc.State.Stopped
-                self.vlc_player.set_time(p)
-                if is_stopped:
-                    self.vlc_player.play()
-                    QTimer.singleShot(0, self.vlc_player.pause) 
-                    self.playPauseButton.setText("Play")
-                    self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+                player_state = self.vlc_player.get_state()
+                is_stopped_or_ended = player_state in (vlc.State.Stopped, vlc.State.Ended)
+
+                if not is_stopped_or_ended:
+                    self.vlc_player.set_time(p)
+                    return
+
+                # If we are here, the player is Stopped or Ended.
+                # To reliably seek from this state, we must stop and restart the player.
+                self.vlc_player.stop()
+
+                # Prevent user from clicking play during the state transition
+                self._is_seeking_from_end = True
+                self.playPauseButton.setEnabled(False)
+                
+                self.vlc_player.play()      # Play (will start from beginning)
+                self.vlc_player.set_time(p) # Immediately seek to the desired time 'p'
+                
+                # Schedule a pause to leave the player in a stable, paused state at the new frame
+                QTimer.singleShot(200, self._finish_seek_from_end)
+
             except Exception as e:
                 try:
                     logger = getattr(self, 'logger', None)

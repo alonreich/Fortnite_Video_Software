@@ -189,10 +189,10 @@ class TrimmedSlider(QSlider):
                 self.sliderMoved.emit(val)
 
         super().mouseMoveEvent(e)
-        if self._duration_ms > 0 and self.maximum() > 0 and not self._dragging_handle and not self._hovering_handle:
-            val = self._map_pos_to_value(e.pos().x())
-            ms = (val / max(1, self.maximum())) * self._duration_ms
-            QToolTip.showText(self.mapToGlobal(e.pos()), self._fmt(int(ms)), self)
+        #if self._duration_ms > 0 and self.maximum() > 0 and not self._dragging_handle and not self._hovering_handle:
+        #    val = self._map_pos_to_value(e.pos().x())
+        #    ms = (val / max(1, self.maximum())) * self._duration_ms
+        #    QToolTip.showText(self.mapToGlobal(e.pos()), self._fmt(int(ms)), self)
 
     def _on_pressed(self):
         if not self._dragging_handle: # Only set _is_pressed if not already dragging a specific handle

@@ -96,6 +96,7 @@ if not gpu_ok:
     except Exception:
         pass
 ex = VideoCompressorApp(file_arg)
+app.installEventFilter(ex)
 try:
     if os.path.exists(icon_path):
         ex.setWindowIcon(QIcon(icon_path))

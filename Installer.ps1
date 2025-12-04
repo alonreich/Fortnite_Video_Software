@@ -45,7 +45,7 @@ $l1=Join-Path $env:LOCALAPPDATA 'Programs\Python\Launcher\py.exe'
 $l2=Join-Path ${env:ProgramFiles} 'Python Launcher\py.exe'
 foreach($p in @($l1,$l2)){if(Test-Path $p){$info.PyLauncherPath=$p;break}}
 $regs=@('HKCU:\Software\Python\PythonCore\3.13\InstallPath','HKLM:\Software\Python\PythonCore\3.13\InstallPath','HKLM:\Software\WOW6432Node\Python\PythonCore\3.13\InstallPath')
-foreach($rp in $regs){try{$ip=(Get-ItemProperty -Path $rp -ErrorAction Stop).'(default)'; if($ip){$info.PyDir=$ip.TrimEnd('\'); break}}catch{}}
+foreach($rp in $regs){try{$ip=(Get-ItemProperty -Path $rp -ErrorAction Stop).'(default)'; if($ip -and $ip -notlike '*WindowsApps*'){$info.PyDir=$ip.TrimEnd('\'); break}}catch{}}
 if(-not $info.PyDir){$g=Join-Path $env:LOCALAPPDATA 'Programs\Python\Python3.13'; if(Test-Path $g){$info.PyDir=$g}}
 if($info.PyDir){$px=Join-Path $info.PyDir 'python.exe'; if(Test-Path $px){$info.PyExe=$px}; $sd=Join-Path $info.PyDir 'Scripts'; if(Test-Path $sd){$info.ScriptsDir=$sd}}
 [pscustomobject]$info
@@ -137,14 +137,28 @@ $desktop=[Environment]::GetFolderPath("Desktop")
 try{ Get-ChildItem -Path $desktop -Filter "*fortnite*.lnk" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue }catch{}
 try{ Get-ChildItem -Path $desktop -Filter "*video*.lnk" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue }catch{}
 try{ $ves=Join-Path $desktop "Video_Editing_Software"; if(Test-Path $ves){ Remove-Item $ves -Recurse -Force -ErrorAction SilentlyContinue } }catch{}
-Step 0 "Cleaned old desktop shortcuts and folders" $true
+# --- FIX: Nuke Windows Store Python Execution Aliases to prevent "Access Denied" ---
+try {
+    Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WindowsApps\python*.exe" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WindowsApps\pip*.exe" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+} catch {}
+Step 0 "Cleaned old desktop shortcuts and neutralized Windows Store Python" $true
 
-$defaultPath="C:\Fortnite_Video_Software"
-Write-Host "`nDefault installation path is: $defaultPath"
-$answer=Read-Host "Press [Enter] to accept, or type N to select a different path"
-if($answer -match '^[Nn]$'){ $installPath=Read-Host "Enter desired installation path (e.g. D:\Games\Fortnite_Video_Software)" } else { $installPath=$defaultPath }
+$installPath = "C:\Fortnite_Video_Software"
 
-try{ if(Test-Path $installPath){Remove-Item $installPath -Recurse -Force -ErrorAction SilentlyContinue}; New-Item -ItemType Directory -Force -Path $installPath|Out-Null; Step 1 "Install directory prepared at $installPath" $true }catch{ Step 1 "Failed to prepare $installPath : $($_.Exception.Message)" $false }
+# --- FIX: Loop until folder is successfully deleted (Resilient Retry) ---
+while (Test-Path $installPath) {
+    try {
+        Remove-Item $installPath -Recurse -Force -ErrorAction Stop
+    } catch {
+        Write-Host "`n[!] CRITICAL ERROR: Cannot delete existing folder: $installPath" -ForegroundColor Red
+        Write-Host "    The folder is locked by another program (Explorer, cmd, VS Code, etc)." -ForegroundColor Red
+        Write-Host "    Error Details: $($_.Exception.Message)" -ForegroundColor Red
+        Read-Host "    >>> PLEASE CLOSE THE LOCKING PROGRAM AND PRESS [ENTER] TO RETRY <<<"
+    }
+}
+
+try{ New-Item -ItemType Directory -Force -Path $installPath|Out-Null; Step 1 "Install directory prepared at $installPath" $true }catch{ Step 1 "Failed to prepare $installPath : $($_.Exception.Message)" $false }
 
 try{
 $repoURL="https://github.com/alonreich/Fortnite_Video_Software"
@@ -186,7 +200,7 @@ try{
   if($global:Py.PyDir){ Add-PathEntryUser $global:Py.PyDir }
   if($global:Py.ScriptsDir){ Add-PathEntryUser $global:Py.ScriptsDir }
   Broadcast-EnvChange
-  if($global:Py.PyExe -or $global:Py.PyLauncherPath){ $pyOK=$true; Step 3 "Python located. Launcher: '$($global:Py.PyLauncherPath)'; Python: '$($global:Py.PyExe)'" $true } else { Step 3 "Python not available after install attempt" $false }
+  if(($global:Py.PyExe -and $global:Py.PyExe -notlike "*WindowsApps*") -or $global:Py.PyLauncherPath){ $pyOK=$true; Step 3 "Python located. Launcher: '$($global:Py.PyLauncherPath)'; Python: '$($global:Py.PyExe)'" $true } else { Step 3 "Python invalid or not available (Store version ignored)" $false }
 }catch{ Step 3 "Python check/install error: $($_.Exception.Message)" $false }
 
 $pipOK = $true
@@ -195,9 +209,16 @@ try {
         $pipOK = $false
     } else {
         $env:PIP_DISABLE_PIP_VERSION_CHECK = "1"
-        # Get the RAW path without quotes from PowerShell
+        
+        # Define command lines for BOTH methods (Direct Python and Launcher)
+        # We use absolute paths because PATH is not updated until reboot
+        $cmdDirect   = if ($global:Py.PyExe)          { "`"$($global:Py.PyExe)`" -m pip install --upgrade pip"       } else { "REM No python.exe found to upgrade" }
+        $cmdLauncher = if ($global:Py.PyLauncherPath) { "`"$($global:Py.PyLauncherPath)`" -3.13 -m pip install --upgrade pip" } else { "REM No py.exe launcher found to upgrade" }
+        
+        # Primary runner for the actual packages (prefer direct exe if available)
         $pyRunnerRaw = if ($global:Py.PyExe) { $global:Py.PyExe } else { $global:Py.PyLauncherPath }
         $pyPfx = if ($global:Py.PyExe) { '' } else { ' -3.13' }
+
         $pipBat = Join-Path $env:TEMP "FVS_PipInstall.cmd"
         $pipContent = @"
 @echo off
@@ -207,12 +228,21 @@ set PY_EXE="$pyRunnerRaw"
 set PY_PFX=$pyPfx
 title Fortnite Video Software – Python package installation
 echo ==== pip phase started ====>>%LOG% 2>&1
+
+:: 1. Sanity check version
 %PY_EXE%%PY_PFX% -c "import sys; print(sys.version)" >>%LOG% 2>&1
 %PY_EXE%%PY_PFX% -m ensurepip --upgrade >>%LOG% 2>&1
-if errorlevel 1 (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "try{Invoke-WebRequest 'https://bootstrap.pypa.io/get-pip.py' -OutFile '$env:TEMP\get-pip.py' -UseBasicParsing}catch{}"
-  if exist "$env:TEMP\get-pip.py" %PY_EXE%%PY_PFX% "$env:TEMP\get-pip.py" >>%LOG% 2>&1
-)
+
+:: 2. DOUBLE TAP PIP UPGRADE (User Request)
+:: Try via Direct Python Executable
+echo [pip] Upgrading via python.exe...
+$cmdDirect >>%LOG% 2>&1
+:: Try via Py Launcher
+echo [pip] Upgrading via py.exe...
+$cmdLauncher >>%LOG% 2>&1
+
+:: 3. Install Packages
+echo [pip] Installing libraries...
 %PY_EXE%%PY_PFX% -m pip install --upgrade pip --timeout 300 --retries 3
 if errorlevel 1 exit /b 1
 %PY_EXE%%PY_PFX% -m pip install PyQt5      --timeout 900 --retries 3 --no-warn-script-location
@@ -223,7 +253,7 @@ if errorlevel 1 exit /b 3
 exit /b 0
 "@
         Set-Content -Path $pipBat -Encoding ASCII -Value $pipContent
-        Write-Host "[pip] Running installation (console will close when finished)" -ForegroundColor Cyan
+        Write-Host "[pip] Running installation (DOUBLE upgrade check enabled)" -ForegroundColor Cyan
         $proc = Start-Process -FilePath cmd.exe -ArgumentList "/c `"$pipBat`"" -PassThru -Wait
         $exit = if($proc){ $proc.ExitCode } else { 9999 }
         try { Remove-Item $pipBat -Force -ErrorAction SilentlyContinue } catch {}

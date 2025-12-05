@@ -11,15 +11,6 @@
 
 This document outlines the structure and purpose of the files within the Video Editing Software project. It is intended to be a guide for developers, especially AI agents, to understand the codebase and its dependencies.
 
-# Project Problems that needs to be addressed by Google Gemini CLI:
-1. I believe that if the f12 is pressed from the main app.py, and then the windows of the developer crop tools is close, a process cmd/python is left behind.
-this needs to be addressed so when the app closes either from the main app.py or the crop_tools or the video merger, the app leaves no gohst proeccess behind.
-2. Seems like the automatic installation script does not always successfully install all pip on all computers. some of them get a weird error of access denied.
-also, does it really installs all pip? including for example psutil? also, it needs to first before anything to upgrade the pip itself.
-3. Does the crop tools main background 1150x1920 is really acurate and will it represent in acurate exactly how .\Processing\Worker.py will do the portrait?
-I am not so sure, because in the picture of the 1150x1920 in the developer crop tools when hitting the begin crops button, it seems like it is a little bit cut off at the bottom.
-like there are missing parts/pieces from the bottom of the video.
-
 ## Project Overview
 The project is a desktop application for Windows, built with Python and the PyQt5 framework. It allows users to compress, trim, and apply various effects to video files, with a focus on gaming clips (specifically Fortnite, as suggested by the naming conventions). The application is designed to be portable, bundling its dependencies like `ffmpeg` and `VLC` in the `binaries` directory. A key feature is the ability to reformat widescreen gameplay into a mobile-friendly portrait view, overlaying important HUD elements like the health bar and loot inventory onto the main video feed. The project also includes a standalone tool for merging multiple video files.
 
@@ -39,6 +30,13 @@ The project is a desktop application for Windows, built with Python and the PyQt
 
 - **`z_Install_Fortnite_Video_Software.cmd` & `Installer.ps1`**
     - **Purpose**: Installation scripts for setting up the application on a user's machine.
+    - **Details**:
+        - The `Installer.ps1` script is a PowerShell script that automates the installation process.
+        - It elevates itself to Administrator privileges to perform system-wide changes.
+        - It downloads the latest version of the application from the GitHub repository.
+        - It installs Python 3.13 if it's not already present.
+        - It upgrades `pip` and installs all the required Python packages, including `PyQt5`, `psutil`, `python-vlc`, `Pillow`, `pypiwin32`, `pynput`, `opencv-python`, and `PyQtWebEngine`.
+        - It creates a desktop shortcut and a context menu entry for `.mp4` files.
 
 - **`.gitignore`**
     - **Purpose**: Standard Git ignore file to exclude unnecessary files from version control.
@@ -132,19 +130,18 @@ The project is a desktop application for Windows, built with Python and the PyQt
     - **`libvlc.dll`, `libvlccore.dll`, and `plugins/`**: The VideoLAN VLC library and its plugins, used for video playback within the application's UI. The application sets the `VLC_PLUGIN_PATH` environment variable to ensure VLC can find its components.
 
 ### `Developer_Tools/` - Developer and Cropping Tools
-
-- **`Crops_Tool.py`**
-    - **Purpose**: A standalone GUI tool for selecting crop areas and positioning them on a portrait-oriented canvas.
-    - **Details**:
-        - It allows opening a video file and taking a snapshot of a frame.
-        - The user can then draw rectangles on the snapshot to define crop areas.
-        - A new "Portrait Composer" window is opened, which has a fixed `1150x1920` aspect ratio.
-        - The cropped areas are added to this window as movable and resizable items.
-        - The tool provides real-time feedback on the position and scale of the items.
-        - A "Finished" button gathers all the information (original resolution, crop rectangles, positions, and scales) and displays it in a dialog for easy copying.
-        - A "Delete Selected" button allows removing items from the composer.
-        - The tool remembers its window size and position, and the last used directory for opening files.
-    - **Dependencies**: `PyQt5`, `python-vlc`.
+Project Core: This is a PyQt5 desktop application designed to generate precise FFmpeg scale and overlay coordinates for converting horizontal video into a 1150x1920 vertical format.
+Entry Point: Crop_Tools.py initializes the app, loads required VLC DLLs from a local binaries folder, and starts the main event loop.
+Backend: media_processor.py wraps libvlc for playback and uses ffmpeg.exe via subprocess to capture high-quality frame snapshots.
+Business Logic: app_handlers.py manages the application state, handling signals between the video player, the crop tool, and the composer window.
+Workflow Step 1: The user loads a video, pauses at a desired frame, and captures a snapshot, which switches the view to the DrawWidget.
+Cropping: crop_widgets.py implements a custom painting widget that allows the user to draw, resize, and lock a Region of Interest (ROI) on the snapshot.
+Composition: The selected ROI is passed to portrait_window.py, a secondary window acting as the target vertical canvas.
+Graphics Handling: graphics_items.py defines custom QGraphicsObject items that allow the cropped pieces to be moved and resized within the portrait scene.
+Output Logic: The PortraitWindow calculates the scaling factors and position coordinates to output a raw FFmpeg filter command (e.g., scale=..., overlay=...).
+State Management: utils.py handles JSON-based persistence for window geometry and cleans up temporary image files.
+Styling: config.py contains the CSS strings used to enforce the dark-mode theme across the application.
+Keyboard Hooks: Keyboard_Mixing.py injects shortcuts, specifically Spacebar for playback control and F12 for debugging.
 
 ### Other Directories
 

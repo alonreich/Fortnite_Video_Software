@@ -11,22 +11,22 @@ class KeyboardMixin(QWidget):
     def _launch_dev_tool(self):
         """Launches the crop tool and closes the main application."""
         try:
-            tool_path = os.path.join(self.base_dir, 'developer_tools', 'Crop_Tools.py')
+            self.logger.info("Launching developer crop tool...")
+            tool_path = os.path.join(self.base_dir, 'developer_tools', 'crop_tools.py')
             if not os.path.exists(tool_path):
                 self.logger.error(f"Crop tool not found at: {tool_path}")
                 return
 
-            # Launch the tool as a new process using the current Python executable
-            subprocess.Popen([sys.executable, tool_path], cwd=os.path.dirname(tool_path))
+            # Launch the tool as a new, detached process
+            flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            subprocess.Popen([sys.executable, tool_path], cwd=os.path.dirname(tool_path), creationflags=flags)
             
-            if hasattr(self, "logger"):
-                self.logger.info("Launching developer tool: %s", tool_path)
+            self.logger.info("Quitting main application to switch to developer tool.")
 
-            # Close the main application
-            self.close()
+            # Quit the main application
+            QApplication.instance().quit()
         except Exception as e:
-            if hasattr(self, "logger"):
-                self.logger.exception("Failed to launch developer tool: %s", e)
+            self.logger.exception("Failed to launch developer tool: %s", e)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.KeyPress:

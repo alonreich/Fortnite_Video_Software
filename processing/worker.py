@@ -682,7 +682,7 @@ class ProcessThread(QThread):
                     still_len = max(0.01, float(self.intro_still_sec or 0.1))
                     loop_frames = max(1, int(round(still_len * 60)))
                     base_intro_filter = (
-                        f"select='eq(n\,0)',format=yuv420p,setsar=1,"
+                        f"select='eq(n\\,0)',format=yuv420p,setsar=1,"
                         f"loop=loop={loop_frames}:size=1:start=0,setpts=N/60/TB,fps=60[vintro];"
                         f"anullsrc=r=48000:cl=stereo,atrim=duration={still_len:.3f},asetpts=PTS-STARTPTS[aintro]"
                     )

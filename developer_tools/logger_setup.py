@@ -1,19 +1,17 @@
-import logging
 import sys
+import os
+import logging
+
+# Add the project root to the path to allow importing 'system'
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from system.logger import setup_logger as setup_main_logger
 
 def setup_logger():
-    """Sets up and returns a configured logger for the application."""
-    logger = logging.getLogger("CropToolLogger")
-    logger.setLevel(logging.INFO)
-    
-    # Prevent adding multiple handlers if called more than once
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        
-    return logger
+    """
+    Initializes the shared logger and returns a specific logger for the
+    Crop Tool, ensuring its messages are identifiable.
+    """
+    return setup_main_logger(project_root, name="Crop_Tools")

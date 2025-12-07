@@ -345,15 +345,32 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                 self.logger.error("FILE: failed to pause before dialog: %s", e)
             except Exception:
                 pass
-        file_path, _ = QFileDialog.getOpenFileName(
+        
+        # Use getOpenFileNames to allow multi-select
+        file_paths, _ = QFileDialog.getOpenFileNames(
             self,
-            "Select Video File",
+            "Select Video File(s)",
             self.last_dir,
             "Video Files (*.mp4 *.mkv *.mov *.avi)",
         )
-        if file_path:
-            self.logger.info("FILE: selected via dialog: %s", file_path)
-            self.handle_file_selection(file_path)
+        
+        if file_paths:
+            # User selected one or more files
+            file_to_load = file_paths[0] # Always choose the first one
+            
+            if len(file_paths) > 1:
+                self.logger.warning(
+                    f"User selected {len(file_paths)} files. "
+                    f"Loading only the first one as per design: {os.path.basename(file_to_load)}"
+                )
+                QMessageBox.information(
+                    self, 
+                    "Multiple Files Selected",
+                    f"You selected {len(file_paths)} files. Only the first file, '{os.path.basename(file_to_load)}', will be loaded."
+                )
+
+            self.logger.info("FILE: selected via dialog: %s", file_to_load)
+            self.handle_file_selection(file_to_load)
         else:
             self.logger.info("FILE: dialog canceled")
 

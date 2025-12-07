@@ -4,6 +4,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.dont_write_bytecode = True
 import ctypes
 import tempfile
+import subprocess
+import psutil
+import logging
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import Qt, QTimer
 from utils import PersistentWindowMixin
@@ -14,10 +17,25 @@ from app_handlers import CropAppHandlers
 from config import CROP_APP_STYLESHEET
 from logger_setup import setup_logger
 
+try:
+    import win32gui
+    import win32process
+    import win32con
+    HAS_WIN32 = True
+except ImportError:
+    HAS_WIN32 = False
+
+# logger = logging.getLogger(__name__) # REMOVED
+
+# Define PID_FILE_PATH (must match app.py)
+PID_FILE_NAME = "fortnite_video_software_app.pid"
+PID_FILE_PATH = os.path.join(tempfile.gettempdir(), PID_FILE_NAME)
+
 class CropApp(KeyboardShortcutMixin, PersistentWindowMixin, QWidget, CropAppHandlers):
 
-    def __init__(self, file_path=None):
+    def __init__(self, logger_instance, file_path=None): # Added logger_instance
         super().__init__()
+        self.logger = logger_instance # Store the injected logger
         self.base_title = "Crop Tool"
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.base_dir = os.path.abspath(os.path.join(self.script_dir, '..'))
@@ -48,6 +66,88 @@ class CropApp(KeyboardShortcutMixin, PersistentWindowMixin, QWidget, CropAppHand
         if file_path and os.path.exists(file_path):
             self.load_file(file_path)
 
+    def _deferred_launch_main_app(self):
+        self.logger.info("F12 pressed in Crop Tool. Attempting to switch to Main App.")
+        main_app_found = False
+        main_app_path = os.path.normcase(os.path.join(self.base_dir, 'app.py'))
+
+        # --- Try to find app.py using PID file first ---
+        if os.path.exists(PID_FILE_PATH):
+            try:
+                with open(PID_FILE_PATH, "r") as f:
+                    pid = int(f.read().strip())
+
+                if psutil.pid_exists(pid):
+                    proc = psutil.Process(pid)
+                    cmdline = [os.path.normcase(arg) for arg in proc.cmdline()]
+                    # Check if the process command line matches what we expect
+                    if any(main_app_path in arg for arg in cmdline):
+                        self.logger.info(f"Found running main app via PID file with PID: {pid}. Bringing to front.")
+                        if HAS_WIN32:
+                            self._bring_app_to_foreground(pid)
+                        main_app_found = True
+                    else:
+                        self.logger.warning(f"A process with PID {pid} exists, but it's not the main app. Stale PID file?")
+                else:
+                    self.logger.info(f"PID from file does not exist. Stale PID file.")
+
+            except (ValueError, FileNotFoundError, psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
+                self.logger.warning(f"Error reading or verifying PID file: {e}. Assuming app is not running.")
+        else:
+            self.logger.info("Main app PID file not found.")
+
+        # --- If not found, launch app.py ---
+        if not main_app_found:
+            self.logger.info("Main app not found or PID was stale. Launching it now.")
+            try:
+                command = [sys.executable, main_app_path]
+                flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                subprocess.Popen(command, creationflags=flags)
+                self.logger.info(f"Launched app.py: {main_app_path}")
+            except Exception as e:
+                self.logger.error(f"Failed to launch app.py: {e}")
+        
+        self.logger.info("Quitting Crop Tool application.")
+        QApplication.instance().quit()
+
+    def keyPressEvent(self, event):
+        key = event.key()
+
+        if key == Qt.Key_F12:
+            self.timer.singleShot(0, self._deferred_launch_main_app)
+            event.accept()
+            return
+        
+        super().keyPressEvent(event) # Pass other key events to the mixin
+
+    def _bring_app_to_foreground(self, pid):
+        if not HAS_WIN32:
+            self.logger.warning("HAS_WIN32 is False, _bring_app_to_foreground cannot function.")
+            return
+
+        def foreach_window(hwnd, ctx):
+            if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd) != '':
+                try:
+                    _, found_pid = win32process.GetWindowThreadProcessId(hwnd)
+                    if found_pid == pid:
+                        window_title = win32gui.GetWindowText(hwnd)
+                        self.logger.info(f"Found target window for PID {pid}: '{window_title}'. Bringing to front.")
+                        try:
+                            win32gui.SetForegroundWindow(hwnd)
+                            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE) # Restore if minimized
+                            return None # Stop enumeration
+                        except Exception as e:
+                            self.logger.error(f"Error setting foreground/showing window for HWND {hwnd}, PID {pid}: {e}")
+                except Exception as e:
+                    # This can happen for privileged processes, so it's not always an error.
+                    pass
+            return 1 # Continue enumeration
+        
+        try:
+            win32gui.EnumWindows(foreach_window, None)
+        except Exception as e:
+            self.logger.error(f"Error during EnumWindows for PID {pid}: {e}")
+
     def closeEvent(self, event):
         if self.portrait_window:
             self.portrait_window.close()
@@ -73,7 +173,7 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
-    player = CropApp(file_path=file_path)
+    player = CropApp(logger, file_path=file_path) # Pass the logger here
     player.show()
     sys.exit(app.exec_())
 if __name__ == '__main__':

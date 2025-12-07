@@ -1,64 +1,44 @@
-import os, sys
+import os, sys, tempfile, psutil
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 sys.dont_write_bytecode = True
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
 from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtGui import QIcon
 import subprocess, ctypes
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
 BIN_DIR   = os.path.join(BASE_DIR, 'binaries')
 PLUGINS   = os.path.join(BIN_DIR, 'plugins')
-os.environ['VLC_PLUGIN_PATH'] = PLUGINS
-if hasattr(os, 'add_dll_directory'):
-    if os.path.isdir(BIN_DIR):   os.add_dll_directory(BIN_DIR)
-    if os.path.isdir(PLUGINS):   os.add_dll_directory(PLUGINS)
-os.environ['PATH'] = BIN_DIR + os.pathsep + PLUGINS + os.pathsep + os.environ.get('PATH','')
-ctypes.WinDLL(os.path.join(BIN_DIR, 'libvlccore.dll'))
-ctypes.WinDLL(os.path.join(BIN_DIR, 'libvlc.dll'))
-from ui.main_window import VideoCompressorApp
 
-if __name__ == "__main__":
-    #sys.stdout = open(os.devnull, "w")
-    #sys.stderr = open(os.devnull, "w")
-    ffmpeg_path = os.path.join(BIN_DIR, 'ffmpeg.exe')
-    ffprobe_path = os.path.join(BIN_DIR, 'ffprobe.exe')
+# --- PID File Management ---
+PID_FILE_NAME = "fortnite_video_software_app.pid"
+PID_FILE_PATH = os.path.join(tempfile.gettempdir(), PID_FILE_NAME)
+
+def write_pid_file():
+    print(f"DEBUG: Attempting to write PID {os.getpid()} to {PID_FILE_PATH}")
     try:
-        subprocess.run([ffmpeg_path, '-version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                       creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0))
-        subprocess.run([ffprobe_path, '-version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                       creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0))
-    except FileNotFoundError:
-        msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Critical)
-        msg_box.setWindowTitle("Dependency Error")
-        msg_box.setText(
-            "FFmpeg or FFprobe not found. Please ensure both 'ffmpeg.exe' and 'ffprobe.exe' are in the same folder as this application.")
-        msg_box.exec_()
-        sys.exit(1)
-    app = QCoreApplication.instance()
-    if app is None:
-        app = QApplication(sys.argv)
-    if sys.platform.startswith("win"):
-        try:
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FortniteVideoTool.VideoCompressor")
-        except Exception:
-            pass
-        try:
-            hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-            #if hwnd:
-                #ctypes.windll.user32.ShowWindow(hwnd, 0)
-                #ctypes.windll.kernel32.FreeConsole()
-        except Exception:
-            pass
+        with open(PID_FILE_PATH, "w") as f:
+            f.write(str(os.getpid()))
+        print(f"DEBUG: Successfully wrote PID {os.getpid()} to {PID_FILE_PATH}")
+    except Exception as e:
+        print(f"ERROR: Failed to write PID file {PID_FILE_PATH}: {e}")
+
+def remove_pid_file():
+    print(f"DEBUG: Attempting to remove PID file {PID_FILE_PATH}")
     try:
-        preferred = os.path.join(BASE_DIR, "icons", "Video_Icon_File.ico")
-        fallback  = os.path.join(BASE_DIR, "icons", "app_icon.ico")
-        icon_path = preferred if os.path.exists(preferred) else fallback
-        if os.path.exists(icon_path):
-            app.setWindowIcon(QIcon(icon_path))
-    except Exception:
-        pass
-    file_arg = sys.argv[1] if len(sys.argv) > 1 else None
+        if os.path.exists(PID_FILE_PATH):
+            os.remove(PID_FILE_PATH)
+            print(f"DEBUG: Successfully removed PID file {PID_FILE_PATH}")
+        else:
+            print(f"DEBUG: PID file {PID_FILE_PATH} does not exist, nothing to remove.")
+    except Exception as e:
+        print(f"ERROR: Failed to remove PID file {PID_FILE_PATH}: {e}")
+# --- End PID File Management ---
+
+os.environ['PATH'] = BIN_DIR + os.pathsep + PLUGINS + os.pathsep + os.environ.get('PATH','')
+# Temporarily commented out for debugging VLC interference
+# ctypes.WinDLL(os.path.join(BIN_DIR, 'libvlccore.dll'))
+# ctypes.WinDLL(os.path.join(BIN_DIR, 'libvlc.dll'))
+from ui.main_window import VideoCompressorApp
 
 def _hwenc_available(ffmpeg_path: str) -> bool:
     """Probe FFmpeg for HW encoders/accels without ever raising."""
@@ -86,21 +66,82 @@ def _hwenc_available(ffmpeg_path: str) -> bool:
         pass
     return False
 
-ffmpeg_path = os.path.join(BIN_DIR, "ffmpeg.exe")
-gpu_ok = _hwenc_available(ffmpeg_path)
-if not gpu_ok:
-    os.environ["VIDEO_FORCE_CPU"] = "1"
+if __name__ == "__main__":
+    #sys.stdout = open(os.devnull, "w")
+    #sys.stderr = open(os.devnull, "w")
+    ffmpeg_path = os.path.join(BIN_DIR, 'ffmpeg.exe')
+    ffprobe_path = os.path.join(BIN_DIR, 'ffprobe.exe')
     try:
-        import logging
-        logging.getLogger("Startup").warning("Hardware-encoder probe failed; forcing CPU.")
+        subprocess.run([ffmpeg_path, '-version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0))
+        subprocess.run([ffprobe_path, '-version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0))
+    except FileNotFoundError:
+        # Creating a temporary app to show the message box
+        temp_app = QApplication(sys.argv)
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Critical)
+        msg_box.setWindowTitle("Dependency Error")
+        msg_box.setText(
+            "FFmpeg or FFprobe not found. Please ensure both 'ffmpeg.exe' and 'ffprobe.exe' are in the same folder as this application.")
+        msg_box.exec_()
+        sys.exit(1)
+
+    app = QCoreApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+
+    # Connect cleanup to application exit
+    print("DEBUG: Connecting remove_pid_file to app.aboutToQuit signal.")
+    app.aboutToQuit.connect(remove_pid_file)
+    write_pid_file() # Write PID after QApplication is initialized
+    print("DEBUG: Called write_pid_file().")
+    
+    if sys.platform.startswith("win"):
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FortniteVideoTool.VideoCompressor")
+        except Exception:
+            pass
+        # Keeping console for debugging, so this remains commented
+        # try:
+        #     hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        #     #if hwnd:
+        #         #ctypes.windll.user32.ShowWindow(hwnd, 0)
+        #         #ctypes.windll.kernel32.FreeConsole()
+        # except Exception:
+        #     pass
+            
+    icon_path = ""
+    try:
+        preferred = os.path.join(BASE_DIR, "icons", "Video_Icon_File.ico")
+        fallback  = os.path.join(BASE_DIR, "icons", "app_icon.ico")
+        icon_path = preferred if os.path.exists(preferred) else fallback
+        if os.path.exists(icon_path):
+            app.setWindowIcon(QIcon(icon_path))
     except Exception:
         pass
-ex = VideoCompressorApp(file_arg)
-app.installEventFilter(ex)
-try:
-    if os.path.exists(icon_path):
-        ex.setWindowIcon(QIcon(icon_path))
-except Exception:
-    pass
-ex.show()
-sys.exit(app.exec_())
+        
+    file_arg = sys.argv[1] if len(sys.argv) > 1 else None
+
+    gpu_ok = _hwenc_available(ffmpeg_path)
+    if not gpu_ok:
+        os.environ["VIDEO_FORCE_CPU"] = "1"
+        try:
+            import logging
+            logging.getLogger("Startup").warning("Hardware-encoder probe failed; forcing CPU.")
+        except Exception:
+            pass
+            
+    ex = VideoCompressorApp(file_arg)
+    app.installEventFilter(ex)
+    try:
+        if icon_path and os.path.exists(icon_path):
+            ex.setWindowIcon(QIcon(icon_path))
+    except Exception:
+        pass
+
+    ex.show()
+    print("DEBUG: Main window shown. Entering app.exec_().")
+    ret = app.exec_()
+    print(f"DEBUG: app.exec_() returned with code: {ret}. App is exiting.")
+    sys.exit(ret)

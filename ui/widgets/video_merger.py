@@ -42,27 +42,17 @@ def _human(n_bytes: int) -> str:
     return f"{n:.2f} {units[s]}"
 
 def _get_logger():
-    import logging
-    logger = logging.getLogger("VideoMerger")
-    if logger.handlers:
-        return logger
-    try:
-        from logger import get_logger
-        return get_logger("VideoMerger")
-    except Exception:
-        pass
-    try:
-        log_dir = _proj_root() / "logs"
-        log_dir.mkdir(exist_ok=True)
-        import logging
-        logger.setLevel(logging.INFO)
-        log_path = log_dir / "Fortnite-Video-Converter.log"
-        fh = logging.FileHandler(str(log_path)) 
-        fh.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        logger.addHandler(fh)
-    except Exception:
-        pass
-    return logger
+    """
+    Initializes the shared logger and returns a specific logger for the
+    Video Merger, ensuring its messages are identifiable.
+    """
+    project_root = str(Path(__file__).resolve().parents[2])
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    
+    from system.logger import setup_logger as setup_main_logger
+    
+    return setup_main_logger(project_root, name="Video_Merger")
 
 def _load_conf() -> dict:
     p = _conf_path()

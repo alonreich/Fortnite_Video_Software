@@ -11,8 +11,6 @@ from PyQt5.Qt import QStyle
 from portrait_window import PortraitWindow
 from utils import cleanup_temp_snapshots
 
-logger = logging.getLogger(__name__)
-
 class CropAppHandlers:
     def connect_signals(self):
         self.play_pause_button.clicked.connect(self.play_pause)
@@ -32,7 +30,7 @@ class CropAppHandlers:
                 f"Size: {self.width()}x{self.height()}")
 
     def reset_state(self):
-        logger.info("Resetting application state.")
+        self.logger.info("Resetting application state.")
         if self.portrait_window:
             self.portrait_window.close()
             self.portrait_window = None
@@ -54,6 +52,7 @@ class CropAppHandlers:
         self.open_button.setFocus()
 
     def play_pause(self):
+        self.logger.info("Play/Pause button clicked.")
         self.media_processor.play_pause()
         QTimer.singleShot(50, self.update_play_pause_button)
 
@@ -66,16 +65,16 @@ class CropAppHandlers:
             self.play_pause_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def _launch_main_app(self):
-        logger.warning("Attempting to launch main app (app.py) - this is a debug/development feature.")
+        self.logger.warning("Attempting to launch main app (app.py) - this is a debug/development feature.")
         try:
             app_path = os.path.join(self.base_dir, 'app.py')
             if not os.path.exists(app_path):
-                logger.error("app.py not found, cannot launch.")
+                self.logger.error("app.py not found, cannot launch.")
                 return
             subprocess.Popen([sys.executable, app_path], cwd=self.base_dir)
             self.close()
         except Exception as e:
-            logger.error("Failed to launch main app.", exc_info=True)
+            self.logger.error("Failed to launch main app.", exc_info=True)
 
     def set_style(self):
         self.setStyleSheet(CROP_APP_STYLESHEET)
@@ -85,25 +84,25 @@ class CropAppHandlers:
     def trigger_portrait_add(self):
         pix, rect = self.draw_widget.get_selection()
         if pix and rect:
-            logger.info(f"Adding new scissored item to portrait window from crop rect: {rect}")
+            self.logger.info(f"Adding new scissored item to portrait window from crop rect: {rect}")
             self.update_crop_coordinates_label(rect)
             if self.portrait_window is None:
-                logger.info("Creating new PortraitWindow instance.")
+                self.logger.info("Creating new PortraitWindow instance.")
                 self.portrait_window = PortraitWindow(self.media_processor.original_resolution, self.config_path)
             self.portrait_window.add_scissored_item(pix, rect, self.background_crop_width)
             self.draw_widget.clear_selection()
             self.portrait_window.show()
         else:
-            logger.warning("Attempted to add to portrait, but no crop selection was made.")
+            self.logger.warning("Attempted to add to portrait, but no crop selection was made.")
             self.coordinates_label.setText("Please draw a box first!")
 
     def open_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Video", self.last_dir, "Video Files (*.mp4 *.avi *.mkv)")
         if file_path:
-            logger.info(f"File dialog opened and selected file: {file_path}")
+            self.logger.info(f"File dialog opened and selected file: {file_path}")
             self.load_file(file_path)
         else:
-            logger.info("File dialog opened but no file was selected.")
+            self.logger.info("File dialog opened but no file was selected.")
 
     def load_file(self, file_path):
         self.last_dir = os.path.dirname(file_path)
@@ -115,14 +114,14 @@ class CropAppHandlers:
         self.show_video_view()
         def enable_snap():
             res = self.media_processor.original_resolution
-            logger.info(f"Media resolution determined: {res}")
+            self.logger.info(f"Media resolution determined: {res}")
             self.coordinates_label.setText(f"Resolution: {res}" if res else "Could not get resolution.")
             self.snapshot_button.setEnabled(True)
             self.snapshot_button.setText("Begin Crops")
         QTimer.singleShot(1000, enable_snap)
 
     def take_snapshot(self):
-        logger.info("Snapshot process initiated.")
+        self.logger.info("Snapshot process initiated.")
         self.coordinates_label.setText("Generating snapshot...")
         QApplication.processEvents()
         
@@ -133,16 +132,16 @@ class CropAppHandlers:
             self.play_pause_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
         success, message = self.media_processor.take_snapshot(self.snapshot_path)
-        logger.info(f"Snapshot result: Success={success}, Message='{message}'")
+        self.logger.info(f"Snapshot result: Success={success}, Message='{message}'")
         self.coordinates_label.setText(message)
         if success:
             self._show_draw_view()
 
     def _show_draw_view(self):
-        logger.info("Showing draw view with new snapshot.")
+        self.logger.info("Showing draw view with new snapshot.")
         snapshot_pixmap = QPixmap(self.snapshot_path)
         if snapshot_pixmap.isNull():
-            logger.error(f"Failed to load snapshot image from disk: {self.snapshot_path}")
+            self.logger.error(f"Failed to load snapshot image from disk: {self.snapshot_path}")
             self.coordinates_label.setText("Failed to load snapshot image.")
             return
         if self.portrait_window is None:
@@ -173,12 +172,13 @@ class CropAppHandlers:
         self.coordinates_label.setText("Ready to draw crops.")
 
     def show_video_view(self):
-        logger.info("Switching back to video view.")
+        self.logger.info("Switching back to video view.")
         self.view_stack.setCurrentWidget(self.video_frame)
         self.video_frame.setFocus()
         self.send_crop_button.setVisible(False)
 
     def set_position(self, position):
+        self.logger.info(f"Slider position changed to: {position}")
         self.media_processor.set_position(position / 1000.0)
 
     def update_ui(self):
@@ -186,7 +186,7 @@ class CropAppHandlers:
             media_pos = int(self.media_processor.get_position() * 1000)
             self.position_slider.setValue(media_pos)
             if str(self.media_processor.get_state()) == 'State.Ended':
-                logger.info("Media reached end.")
+                self.logger.info("Media reached end.")
                 self.media_processor.stop()
                 self.play_pause_button.setText("Play")
                 self.play_pause_button.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))

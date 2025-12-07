@@ -12,6 +12,9 @@ $logPath = "$env:TEMP\Fortnite_Video_Software_Install_Report.txt"
 "==========================================" | Out-File $logPath -Append -Encoding UTF8
 Add-Content $logPath ("Started: " + (Get-Date))
 
+# --- Status Tracking Variables ---
+$step0OK=$false; $step1OK=$false; $step2OK=$false; $pyOK=$false; $pipOK=$false; $verbOK=$false; $binOK=$false; $deskOK=$false; $fixOK=$false
+
 function Step($n,$m,$ok){$s=if($ok){"✅ SUCCESS"}else{"❌ FAILED"};Write-Host "[$n] $s - $m";Add-Content $logPath "[$n] $s - $m"}
 function Info($t){Write-Host $t -ForegroundColor Cyan;Add-Content $logPath $t}
 
@@ -143,6 +146,7 @@ try {
     Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WindowsApps\pip*.exe" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 } catch {}
 Step 0 "Cleaned old desktop shortcuts and neutralized Windows Store Python" $true
+$step0OK = $true
 
 $installPath = "C:\Fortnite_Video_Software"
 
@@ -154,11 +158,12 @@ while (Test-Path $installPath) {
         Write-Host "`n[!] CRITICAL ERROR: Cannot delete existing folder: $installPath" -ForegroundColor Red
         Write-Host "    The folder is locked by another program (Explorer, cmd, VS Code, etc)." -ForegroundColor Red
         Write-Host "    Error Details: $($_.Exception.Message)" -ForegroundColor Red
-        Read-Host "    >>> PLEASE CLOSE THE LOCKING PROGRAM AND PRESS [ENTER] TO RETRY <<<"
+        Write-Host "    >>> Exiting installer. Please close the locking program and re-run. <<<" -ForegroundColor Yellow
+        exit 1
     }
 }
 
-try{ New-Item -ItemType Directory -Force -Path $installPath|Out-Null; Step 1 "Install directory prepared at $installPath" $true }catch{ Step 1 "Failed to prepare $installPath : $($_.Exception.Message)" $false }
+try{ New-Item -ItemType Directory -Force -Path $installPath|Out-Null; Step 1 "Install directory prepared at $installPath" $true; $step1OK=$true }catch{ Step 1 "Failed to prepare $installPath : $($_.Exception.Message)" $false }
 
 try{
 $repoURL="https://github.com/alonreich/Fortnite_Video_Software"
@@ -179,6 +184,7 @@ Move-Item -LiteralPath $_.FullName -Destination $installPath -Force
 }
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 Step 2 "Fetched, extracted, and flattened project files into $installPath" $true
+$step2OK = $true
 }catch{ Step 2 "GitHub fetch/extract failed: $($_.Exception.Message)" $false }
 
 $pyOK=$false; $global:Py=$null
@@ -233,15 +239,13 @@ echo ==== pip phase started ====>>%LOG% 2>&1
 %PY_EXE%%PY_PFX% -c "import sys; print(sys.version)" >>%LOG% 2>&1
 %PY_EXE%%PY_PFX% -m ensurepip --upgrade >>%LOG% 2>&1
 
-:: 2. DOUBLE TAP PIP UPGRADE (User Request)
-:: Try via Direct Python Executable
+:: 2. DOUBLE TAP PIP UPGRADE
 echo [pip] Upgrading via python.exe...
 $cmdDirect >>%LOG% 2>&1
-:: Try via Py Launcher
 echo [pip] Upgrading via py.exe...
 $cmdLauncher >>%LOG% 2>&1
 
-:: 3. Install Packages
+:: 3. Install Packages (Extended List)
 echo [pip] Installing libraries...
 %PY_EXE%%PY_PFX% -m pip install --upgrade pip --timeout 300 --retries 3
 if errorlevel 1 exit /b 1
@@ -270,34 +274,9 @@ exit /b 0
         if ($exit -ne 0) { $pipOK = $false; Add-Content $logPath "[pip] ExitCode=$exit" } else { Add-Content $logPath "[pip] Completed successfully" }
     }
 } catch { $pipOK = $false }
-if ($pipOK) { Step 4 "Installed Python packages (PyQt5, psutil, python-vlc)" $true } else { Step 4 "pip packages were not fully installed; see log at $logPath" $false }
+if ($pipOK) { Step 4 "Installed Python packages (PyQt5, psutil, vlc, Pillow, opencv, etc)" $true } else { Step 4 "pip packages were not fully installed; see log at $logPath" $false }
 
 Step 5 "Classic context menu hack skipped" $true
-
-try{
-$runnerPath = if($global:Py -and $global:Py.PyExe){ "`"$($global:Py.PyExe)`"" } else { "`"$($global:Py.PyLauncherPath)`" -3.13" }
-$verbName="Fortnite_Video_Software"
-$iconPath=Join-Path $installPath "icons\Video_Icon_File.ico"
-$CmdValue = '"{0}" "{1}\app.py" "%%1"' -f $runnerPath.Trim('"'), $installPath # Clean runner path for substitution
-$RootPath = "Registry::HKEY_CLASSES_ROOT\.mp4\shell\$verbName"
-$CmdPath="$RootPath\command"
-
-# Remove any old attempts
-Remove-Item "HKCU:\Software\Classes\.mp4\shell\$verbName" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item $RootPath -Recurse -Force -ErrorAction SilentlyContinue
-
-# Create the shell key and set properties
-New-Item -Path $RootPath -Force -ItemType Directory | Out-Null
-New-ItemProperty -Path $RootPath -Name "MUIVerb" -Value " ★ Fortnite_Video_Software ★ " -PropertyType String -Force | Out-Null
-if(Test-Path $iconPath){ New-ItemProperty -Path $RootPath -Name "Icon" -Value $IconPath -PropertyType String -Force|Out-Null }
-
-# Create the command subkey and set the default command value (using Set-Item implicitly sets the (Default) property)
-New-Item -Path $CmdPath -ItemType Directory -Force | Out-Null
-Set-Item -Path $CmdPath -Value $CmdValue | Out-Null
-
-$verbOK=$true
-}catch{ $verbOK=$false }
-Step 6 ("Context menu entry added to .mp4 files (FINAL HKEY_CLASSES_ROOT)"+$(if($verbOK){" "}else{" - errors occurred"})) $verbOK
 
 $binOK=$true
 try{
@@ -312,7 +291,51 @@ if($global:Py.PyExe){
 Add-PathEntryUser $bin
 Broadcast-EnvChange
 }catch{ $binOK=$false }
-Step 7 ("Created PATH shims in \bin and added to PATH"+$(if($binOK){" "}else{" - errors occurred"})) $binOK
+Step 6 ("Created PATH shims in \bin and added to PATH"+$(if($binOK){" "}else{" - errors occurred"})) $binOK
+
+# --- STEP 7: INTEGRATED "SYSTEM FILE ASSOCIATIONS" FIX ---
+$verbOK=$true
+try{
+    # 1. DEFINE PATHS
+    $verbName = "Fortnite_Video_Software"
+    $iconPath = Join-Path $installPath "icons\Video_Icon_File.ico"
+    $pythonCmdPath = Join-Path $installPath "bin\python.cmd"
+    $appPyPath = Join-Path $installPath "app.py"
+    $CmdValue = "`"$pythonCmdPath`" `"$appPyPath`" `"%1`""
+    
+    # 2. TARGET HKLM SystemFileAssociations (Overrides VLC/Default Apps)
+    $RegPath = "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Classes\SystemFileAssociations\.mp4\shell\$verbName"
+    $CmdPath = "$RegPath\command"
+
+    # 3. NUKE OLD KEYS (Hunter-Killer Mode for HKCR and HKCU to avoid duplicates)
+    $shellKey = "Registry::HKEY_CLASSES_ROOT\.mp4\shell"
+    if (Test-Path $shellKey) {
+        Get-ChildItem $shellKey | Where-Object { $_.Name -match "Fortnite" -or $_.Name -match "Video_Compressor" } | ForEach-Object {
+            Write-Host " [Cleanup] Removing old weak key: $($_.Name)" -ForegroundColor Yellow
+            Remove-Item $_.PSPath -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+    Remove-Item "HKCU:\Software\Classes\.mp4\shell\Fortnite*" -Recurse -Force -ErrorAction SilentlyContinue
+
+    # 4. VERIFY ICON
+    if (-not (Test-Path $iconPath)) { Write-Host " [WARNING] Icon file not found at: $iconPath" -ForegroundColor Red }
+
+    # 5. CREATE NEW STRONG REGISTRY KEYS (SystemFileAssociations)
+    New-Item -Path $RegPath -Force -ItemType Directory | Out-Null
+    New-ItemProperty -Path $RegPath -Name "MUIVerb" -Value "Fortnite Video Software" -PropertyType String -Force | Out-Null
+    if(Test-Path $iconPath){ New-ItemProperty -Path $RegPath -Name "Icon" -Value $iconPath -PropertyType String -Force | Out-Null }
+    New-Item -Path $CmdPath -ItemType Directory -Force | Out-Null
+    Set-Item -Path $CmdPath -Value $CmdValue | Out-Null
+    
+    # 6. FORCE REFRESH (Restart Explorer)
+    Write-Host " [Refresh] Restarting Explorer to apply icon..." -ForegroundColor DarkGray
+    Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+    if (-not (Get-Process explorer -ErrorAction SilentlyContinue)) { Start-Process explorer }
+
+    $verbOK=$true
+} catch { $verbOK=$false }
+Step 7 ("Cleaned old keys and registered 'SystemFileAssociations' (Strong Fix)"+$(if($verbOK){" "}else{" - errors occurred"})) $verbOK
 
 $deskOK=$true
 try{
@@ -359,16 +382,37 @@ Set-ShortcutRunAsAdministrator -lnkPath $fixLnk
 Step 9 ("Fix OS script created"+$(if($fixOK){" "}else{" - errors occurred"})+"; desktop shortcut created (Run as admin)"+$(if($fixDeskOK){" "}else{" - errors occurred"})) ($fixOK -and $fixDeskOK)
 
 Add-Content $logPath ("Finished: " + (Get-Date))
-Start-Process notepad.exe $logPath
+
+# --- NEW: Generate Short Summary on Desktop ---
+$summaryPath = "$([Environment]::GetFolderPath("Desktop"))\Fortnite Video Software Log.txt"
+$summaryContent = @()
+$summaryContent += "Fortnite Video Software - Installation Summary"
+$summaryContent += "Date: $(Get-Date)"
+$summaryContent += "---------------------------------------------"
+
+# Helper function to avoid PS 5.1 syntax errors
+function Get-StatusMsg($b) { if($b) { return "✅ SUCCESS" } else { return "❌ FAILED" } }
+
+$summaryContent += "1. Clean Old Files:      $(Get-StatusMsg $step0OK)"
+$summaryContent += "2. Install Directory:    $(Get-StatusMsg $step1OK)"
+$summaryContent += "3. Download Source:      $(Get-StatusMsg $step2OK)"
+$summaryContent += "4. Python Install:       $(Get-StatusMsg $pyOK)"
+$summaryContent += "5. Pip Libraries:        $(Get-StatusMsg $pipOK)"
+$summaryContent += "6. Registry/Menu Fix:    $(Get-StatusMsg $verbOK)"
+$summaryContent += "7. Desktop Shortcut:     $(Get-StatusMsg $deskOK)"
+$summaryContent += "8. OS Fix Scripts:       $(Get-StatusMsg ($fixOK -and $fixDeskOK))"
+$summaryContent += "---------------------------------------------"
+if ($step1OK -and $step2OK -and $pyOK -and $pipOK -and $verbOK) {
+    $summaryContent += "OVERALL STATUS:          ✅ COMPLETED SUCCESSFULLY"
+} else {
+    $summaryContent += "OVERALL STATUS:          ❌ COMPLETED WITH ERRORS"
+    $summaryContent += "NOTE: Please check the detailed log at: $logPath"
+}
+$summaryContent | Out-File $summaryPath -Encoding UTF8 -Force
+Write-Host "`nSummary log created at: $summaryPath" -ForegroundColor Cyan
+# -----------------------------------------------
 
 Write-Host "`n==========================================================" -ForegroundColor Yellow
 Write-Host "✅ Installation Complete." -ForegroundColor Green
 Write-Host "NOTE: A system reboot is critical for PATH and registry changes to take full effect." -ForegroundColor Red
-$reboot = Read-Host "Do you want to REBOOT NOW? (Y/N)"
-
-if ($reboot -match '^[Yy]$') {
-    Write-Host "System restarting..." -ForegroundColor Red
-    shutdown /r /t 0
-} else {
-    Write-Host "Reboot skipped. Please reboot manually later." -ForegroundColor Cyan
-}
+Write-Host "Please reboot your computer manually to complete the installation." -ForegroundColor Yellow

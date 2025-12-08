@@ -134,7 +134,7 @@ class MergerUI:
         self.parent.music_volume_slider.setFocusPolicy(Qt.NoFocus)
         self.parent.music_volume_slider.setMinimumHeight(150)
         self.parent.music_volume_slider.setInvertedAppearance(True)
-        eff_default = int(35)
+        eff_default = int(25)
         self.parent.music_volume_slider.setValue(eff_default)
         _knob = "#7289da"
         self.parent.music_volume_slider.setStyleSheet(f"""

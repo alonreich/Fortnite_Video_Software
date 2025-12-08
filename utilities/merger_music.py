@@ -67,8 +67,8 @@ class MusicHandler:
     def _on_music_selected(self, index: int):
         if not self._music_files:
             return
-        if self.parent.music_volume_slider.value() in (0, 35):
-             self.parent.music_volume_slider.setValue(35)
+        if self.parent.music_volume_slider.value() in (0, 25):
+             self.parent.music_volume_slider.setValue(25)
         try:
             p = self.parent.music_combo.currentData()
             if not p:

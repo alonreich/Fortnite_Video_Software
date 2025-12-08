@@ -55,6 +55,10 @@ class UiBuilderMixin:
                 finally:
                     QMessageBox.warning(self, "Error", f"Failed to pick thumbnail: {e}")
 
+        def _on_boss_hp_toggled(self, checked):
+            if hasattr(self, "logger"):
+                self.logger.info(f"OPTION: Boss HP -> {checked}")
+
         def _update_process_button_text(self) -> None:
             """Updates the process button text AND spinner icon."""
             try:
@@ -428,9 +432,9 @@ class UiBuilderMixin:
                 }
             """)
             self.thumb_pick_btn = QPushButton("📸 Set Thumbnail 📸")
-            self.thumb_pick_btn.setToolTip("Pick the exact frame at the current player position for the 0.1s intro still.")
+            self.thumb_pick_btn.setObjectName("thumbPickBtn")
+            self.tooltip_manager.add_tooltip(self.thumb_pick_btn, "Select Custom Thumbnail Picture For Sharing")
             self.thumb_pick_btn.setFocusPolicy(Qt.NoFocus)
-            self.thumb_pick_btn.setStyleSheet("font-size: 11px; font-weight: bold;")
             self.thumb_pick_btn.clicked.connect(self._pick_thumbnail_from_current_frame)
             _left_col = QVBoxLayout()
             _left_col.setContentsMargins(0, 0, 0, 0)
@@ -497,9 +501,20 @@ class UiBuilderMixin:
             )
             self.merge_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
             self.merge_btn.clicked.connect(self.launch_video_merger)
+
+            self.boss_hp_checkbox = QCheckBox("Boss HP")
+            self.boss_hp_checkbox.setObjectName("bossHpCheckbox")
+            boss_hp_tooltip_text = "<p style='font-family: Arial; font-size: 13pt; font-weight: normal;'>For videos which you are the boss charachter in them</p>"
+            self.tooltip_manager.add_tooltip(self.boss_hp_checkbox, boss_hp_tooltip_text)
+            self.boss_hp_checkbox.setStyleSheet("font-size: 10px; font-weight: normal;")
+            self.boss_hp_checkbox.setChecked(False)
+            self.boss_hp_checkbox.toggled.connect(self._on_boss_hp_toggled)
+
             trim_container = QHBoxLayout()
             trim_container.setContentsMargins(0, 0, 0, 0)
             trim_container.addWidget(self.thumb_pick_btn, 0, Qt.AlignLeft)
+            trim_container.addSpacing(30)
+            trim_container.addWidget(self.boss_hp_checkbox, 0, Qt.AlignLeft)
             trim_container.addStretch(1)
             trim_container.addLayout(trim_layout)
             trim_container.addStretch(1)
@@ -749,7 +764,7 @@ class UiBuilderMixin:
             self.music_volume_slider.setVisible(True)
             self.music_volume_slider.setFocusPolicy(Qt.NoFocus)
             self.music_volume_slider.installEventFilter(self)
-            eff_default = int(self.config_manager.config.get('last_music_volume', 35))
+            eff_default = 75
             raw = self.music_volume_slider.maximum() + self.music_volume_slider.minimum() - eff_default
             _knob = self.positionSlider.palette().highlight().color().name()
             self.music_volume_slider.setStyleSheet(f"""

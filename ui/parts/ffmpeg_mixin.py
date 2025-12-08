@@ -104,10 +104,10 @@ class FfmpegMixin:
                 music_path, music_vol_linear = self._get_selected_music()
                 q_level = int(self.quality_slider.value())
                 self.logger.info(
-                    "PROCESS: clicked at %s | start=%.3fs end=%.3fs speed=%sx | mobile=%s teammates=%s | quality_level=%d | disable_fades=%s | music=%s vol=%.2f",
+                    "PROCESS: clicked at %s | start=%.3fs end=%.3fs speed=%sx | mobile=%s teammates=%s boss_hp=%s | quality_level=%d | disable_fades=%s | music=%s vol=%.2f",
                     time.strftime("%Y-%m-%d %H:%M:%S"),
                     start_time, end_time, speed_factor,
-                    is_mobile_format, self.teammates_checkbox.isChecked(),
+                    is_mobile_format, self.teammates_checkbox.isChecked(), self.boss_hp_checkbox.isChecked(),
                     q_level,
                     self.no_fade_checkbox.isChecked(),
                     (music_path or "None"), (music_vol_linear if music_vol_linear is not None else 0.0)
@@ -137,6 +137,7 @@ class FfmpegMixin:
                     is_mobile_format, speed_factor, self.script_dir,
                     self.progress_update_signal, self.status_update_signal, self.process_finished_signal,
                     self.logger,
+                    is_boss_hp=self.boss_hp_checkbox.isChecked(),
                     show_teammates_overlay=(is_mobile_format and self.teammates_checkbox.isChecked()),
                     quality_level=q_level,
                     bg_music_path=music_path, bg_music_volume=music_vol_linear,
@@ -180,7 +181,7 @@ class FfmpegMixin:
             self.progress_bar.setValue(0)
             self.selected_intro_abs_time = None
             try:
-                self.thumb_pick_btn.setText("📸 Use Current Frame as Thumbnail")
+                self.thumb_pick_btn.setText("📸 Set Thumbnail 📸")
             except Exception:
                 pass
             if success:

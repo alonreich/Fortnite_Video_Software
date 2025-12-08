@@ -19,7 +19,7 @@ class ToolTipManager(QObject):
             tooltip_text = self._tooltips.get(obj.objectName())
             if tooltip_text:
                 # Position tooltip at top-right of the cursor with an offset
-                offset = QPoint(20, -30) 
+                offset = QPoint(20, -40) 
                 QToolTip.showText(QCursor.pos() + offset, tooltip_text, obj)
             return True
         elif event.type() == QEvent.Leave:

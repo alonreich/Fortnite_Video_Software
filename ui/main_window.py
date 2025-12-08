@@ -332,6 +332,15 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             QPushButton#DoneButton { background-color: #e74c3c; }
             QProgressBar { border: 1px solid #3986ae; border-radius: 5px; text-align: center; height: 18px; }
             QProgressBar::chunk { background-color: #2ecc71; }
+            QToolTip {
+                font-family: Arial;
+                font-size: 13pt;
+                font-weight: normal;
+                border: 1px solid #ecf0f1;
+                background-color: #34495e;
+                color: #ecf0f1;
+                padding: 5px;
+            }
         """)
 
     def select_file(self):

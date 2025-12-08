@@ -11,10 +11,11 @@ from PyQt5.QtCore import QThread
 class ProcessThread(QThread):
     def __init__(self, input_path, start_time, end_time, original_resolution, is_mobile_format, speed_factor,
                  script_dir, progress_update_signal, status_update_signal, finished_signal, logger,
-                 show_teammates_overlay=False, quality_level: int = 2,
+                 is_boss_hp=False, show_teammates_overlay=False, quality_level: int = 2,
                  bg_music_path=None, bg_music_volume=None, bg_music_offset=0.0, original_total_duration=0.0,
                  disable_fades=False, intro_still_sec: float = 0.0, intro_from_midpoint: bool = False, intro_abs_time: float = None):
         super().__init__()
+        self.is_boss_hp = is_boss_hp
         self.input_path = input_path
         self.start_time = start_time
         self.end_time = end_time
@@ -282,59 +283,62 @@ class ProcessThread(QThread):
             if total_frames is None:
                 self.status_update_signal.emit("Could not determine total frames. Progress bar might be inaccurate.")
             video_filter_cmd = ""
-            healthbar_crop_string = ""
-            loot_area_crop_string = ""
-            stats_area_crop_string = ""
-            # New user-provided coordinates for 2560x1440
-            # healthbar: x=0, y=1261, w=302, h=117
-            hb_1080   = (320, 56, 35, 977)
-            loot_1080 = (348, 73, 1543, 975)
-            stats_1080 = (58, 102, 1685, 23)
-            team_1080  = (174, 161, 14, 801)
-
-            def scale_box(box, s):
-                return tuple(int(round(v * s)) for v in box)
-
-            in_w, in_h = map(int, self.original_resolution.split('x'))
-
-            if self.original_resolution == "1920x1080":
-                hb, loot, stats, team = hb_1080, loot_1080, stats_1080, team_1080
-            elif self.original_resolution == "2560x1440":
-                scale_1440 = 2560 / 1920
-                hb    = scale_box(hb_1080, scale_1440)
-                loot  = scale_box(loot_1080, scale_1440)
-                stats = scale_box(stats_1080, scale_1440)
-                team  = scale_box(team_1080, scale_1440)
-            elif self.original_resolution == "3440x1440":
-                hb = map_hud_box_to_input(hb_1080, in_w, in_h, base_w=1920, base_h=1080)
-                loot = map_hud_box_to_input(loot_1080, in_w, in_h, base_w=1920, base_h=1080)
-                stats = map_hud_box_to_input(stats_1080, in_w, in_h, base_w=1920, base_h=1080)
-                team = map_hud_box_to_input(team_1080, in_w, in_h, base_w=1920, base_h=1080)
-            elif self.original_resolution == "3840x2160":
-                scale_2160 = 3840 / 1920
-                hb    = scale_box(hb_1080, scale_2160)
-                loot  = scale_box(loot_1080, scale_2160)
-                stats = scale_box(stats_1080, scale_2160)
-                team  = scale_box(team_1080, scale_2160)
-            else:
-                hb, loot, stats, team = hb_1080, loot_1080, stats_1080, team_1080
-            healthbar_crop_string  = f"{hb[0]}:{hb[1]}:{hb[2]}:{hb[3]}"
-            loot_area_crop_string  = f"{loot[0]}:{loot[1]}:{loot[2]}:{loot[3]}"
-            stats_area_crop_string = f"{stats[0]}:{stats[1]}:{stats[2]}:{stats[3]}"
-            team_crop_string       = f"{team[0]}:{team[1]}:{team[2]}:{team[3]}"
-            
             main_width  = 1150
             main_height = 1920
+
             if self.is_mobile_format:
-                # Define base scale factors for overlays from user input
-                healthbar_scale = 1.77
-                loot_scale = 1.661
+                # NEW: Define universal 1080p base coordinates from reverse-engineered 1440p values
+                # All crops are (width, height, x, y)
+                loot_1080 = (339, 60, 1547, 980)
+                stats_1080 = (212, 173, 1687, 0)
+                normal_hp_1080 = (311, 47, 41, 980)
+                boss_hp_1080 = (325, 46, 138, 981)
+                team_1080  = (174, 161, 14, 801) # Unchanged by user
+
+                if self.is_boss_hp:
+                    hp_1080 = boss_hp_1080
+                    self.logger.info("Using Boss HP coordinates.")
+                else:
+                    hp_1080 = normal_hp_1080
+                    self.logger.info("Using Normal HP coordinates.")
+
+                def scale_box(box, s):
+                    return tuple(int(round(v * s)) for v in box)
+
+                in_w, in_h = map(int, self.original_resolution.split('x'))
+                
+                # Universal scaling logic
+                if self.original_resolution == "1920x1080":
+                    scale_factor = 1.0
+                elif self.original_resolution == "2560x1440":
+                    scale_factor = 2560 / 1920.0
+                elif self.original_resolution == "3840x2160":
+                    scale_factor = 3840 / 1920.0
+                else: # Fallback for other resolutions, e.g., 3440x1440 (anamorphic)
+                    scale_factor = in_w / 1920.0
+
+                hp = scale_box(hp_1080, scale_factor)
+                loot = scale_box(loot_1080, scale_factor)
+                stats = scale_box(stats_1080, scale_factor)
+                team = scale_box(team_1080, scale_factor)
+
+                healthbar_crop_string  = f"{hp[0]}:{hp[1]}:{hp[2]}:{hp[3]}"
+                loot_area_crop_string  = f"{loot[0]}:{loot[1]}:{loot[2]}:{loot[3]}"
+                stats_area_crop_string = f"{stats[0]}:{stats[1]}:{stats[2]}:{stats[3]}"
+                team_crop_string       = f"{team[0]}:{team[1]}:{team[2]}:{team[3]}"
+
+                # Base scale factors for overlays from user input
+                if self.is_boss_hp:
+                    healthbar_scale = 1.615116 # 2% reduction for Boss HP
+                else:
+                    healthbar_scale = 1.717429 # 1% reduction for Normal HP
+                loot_scale = 1.772287
                 stats_scale = 2.0
                 team_scale = 1.61
 
                 # Calculate scaled sizes
-                healthbar_scaled_width  = int(round(hb_1080[0] * healthbar_scale))
-                healthbar_scaled_height = int(round(hb_1080[1] * healthbar_scale))
+                healthbar_scaled_width  = int(round(hp_1080[0] * healthbar_scale))
+                healthbar_scaled_height = int(round(hp_1080[1] * healthbar_scale))
                 loot_scaled_width       = int(round(loot_1080[0] * loot_scale))
                 loot_scaled_height      = int(round(loot_1080[1] * loot_scale))
                 stats_scaled_width      = int(round(stats_1080[0] * stats_scale))
@@ -342,13 +346,17 @@ class ProcessThread(QThread):
                 team_scaled_width       = int(round(team_1080[0] * team_scale))
                 team_scaled_height      = int(round(team_1080[1] * team_scale))
 
-                # Use hardcoded positions from user input
-                healthbar_overlay_x = -1
-                healthbar_overlay_y = 1692
-                loot_overlay_x = 571
-                loot_overlay_y = 1685
-                stats_overlay_x = 1004
-                stats_overlay_y = 62
+                # Hardcoded overlay positions from user input
+                if self.is_boss_hp:
+                    healthbar_overlay_x = 8
+                    healthbar_overlay_y = 1701
+                else:
+                    healthbar_overlay_x = 3
+                    healthbar_overlay_y = 1696
+                loot_overlay_x = 544
+                loot_overlay_y = 1687
+                stats_overlay_x = 748
+                stats_overlay_y = -3
                 team_overlay_x = 32
                 team_overlay_y = 1434
 
@@ -361,9 +369,9 @@ class ProcessThread(QThread):
                 common_splits = "split=4[main][lootbar][healthbar][stats]"
                 common_filters = (
                     f"[main]scale={main_width}:{main_height}:force_original_aspect_ratio=increase,crop={main_width}:{main_height}[main_cropped];"
-                    f"[lootbar]crop={loot_area_crop_string},{lootbar_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
-                    f"[healthbar]crop={healthbar_crop_string},{healthbar_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
-                    f"[stats]crop={stats_area_crop_string},{stats_scale_str},format=yuva444p,colorchannelmixer=aa=0.7[stats_scaled];"
+                    f"[lootbar]crop={loot_area_crop_string},drawbox=t=2:c=black,{lootbar_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[lootbar_scaled];"
+                    f"[healthbar]crop={healthbar_crop_string},drawbox=t=2:c=black,{healthbar_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[healthbar_scaled];"
+                    f"[stats]crop={stats_area_crop_string},drawbox=t=2:c=black,{stats_scale_str},format=yuva444p,colorchannelmixer=aa=1.0[stats_scaled];"
                 )
                 common_overlays = (
                     f"[main_cropped][lootbar_scaled]overlay={loot_overlay_x}:{loot_overlay_y}[t1];"
@@ -375,7 +383,7 @@ class ProcessThread(QThread):
                     video_filter_cmd = (
                         f"split=5[main][lootbar][healthbar][stats][team];"
                         f"{common_filters}"
-                        f"[team]crop={team_crop_string},{team_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];"
+                        f"[team]crop={team_crop_string},drawbox=t=2:c=black,{team_scale_str},format=yuva444p,colorchannelmixer=aa=0.8[team_scaled];"
                         f"{common_overlays}[t3];"
                         f"[t3][team_scaled]overlay={team_overlay_x}:{team_overlay_y}"
                     )

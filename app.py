@@ -67,8 +67,8 @@ def _hwenc_available(ffmpeg_path: str) -> bool:
     return False
 
 if __name__ == "__main__":
-    #sys.stdout = open(os.devnull, "w")
-    #sys.stderr = open(os.devnull, "w")
+    sys.stdout = open(os.devnull, "w")
+    sys.stderr = open(os.devnull, "w")
     ffmpeg_path = os.path.join(BIN_DIR, 'ffmpeg.exe')
     ffprobe_path = os.path.join(BIN_DIR, 'ffprobe.exe')
     try:
@@ -102,14 +102,13 @@ if __name__ == "__main__":
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("FortniteVideoTool.VideoCompressor")
         except Exception:
             pass
-        # Keeping console for debugging, so this remains commented
-        # try:
-        #     hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-        #     #if hwnd:
-        #         #ctypes.windll.user32.ShowWindow(hwnd, 0)
-        #         #ctypes.windll.kernel32.FreeConsole()
-        # except Exception:
-        #     pass
+        try:
+            hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+            if hwnd:
+                ctypes.windll.user32.ShowWindow(hwnd, 0)
+                ctypes.windll.kernel32.FreeConsole()
+        except Exception:
+            pass
             
     icon_path = ""
     try:

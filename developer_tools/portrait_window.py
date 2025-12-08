@@ -30,6 +30,10 @@ class FinishedDialog(QDialog):
 
     def copy_text(self):
         QApplication.clipboard().setText(self.text_edit.toPlainText())
+        self.copy_button.setText("Copied!")
+        self.copy_button.setStyleSheet("background-color: #27ae60; color: white;")
+        self.copy_button.setEnabled(False)
+        QTimer.singleShot(1000, self.accept)
 
 class PortraitView(QGraphicsView):
     def keyPressEvent(self, event):

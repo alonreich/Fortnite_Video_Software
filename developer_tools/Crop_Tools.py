@@ -154,6 +154,15 @@ class CropApp(KeyboardShortcutMixin, PersistentWindowMixin, QWidget, CropAppHand
         super().closeEvent(event)
 
 def main():
+    try:
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.user32.ShowWindow(hwnd, 0)
+            ctypes.windll.kernel32.FreeConsole()
+    except Exception:
+        pass
+    sys.stdout = open(os.devnull, 'w')
+    sys.stderr = open(os.devnull, 'w')
     logger = setup_logger()
     logger.info("Application starting...")
     sys.dont_write_bytecode = True

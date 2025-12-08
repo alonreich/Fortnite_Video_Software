@@ -1,3 +1,6 @@
+import os
+import sys
+import subprocess
 from PyQt5.QtCore import Qt, QTimer, QSize, QEvent
 from PyQt5.QtGui import QPixmap, QPainter, QFont, QIcon, QFontMetrics
 from PyQt5.QtWidgets import (QGridLayout, QMessageBox, QSizePolicy, QHBoxLayout,
@@ -176,32 +179,19 @@ class UiBuilderMixin:
 
         def launch_video_merger(self):
             try:
-                from ui.widgets.video_merger import VideoMergerWindow 
-            except ImportError:
-                self.logger.critical("ERROR: Could not import VideoMergerWindow. Check your PYTHONPATH.")
-                QMessageBox.critical(self, "Error", "Cannot load Video Merger module.")
-                return
-            try:
                 self.logger.info("ACTION: Launching Video Merger…")
-                vlc_instance = getattr(self, 'vlc_instance', None)
-                bin_dir = getattr(self, 'bin_dir', '')
-                config_manager = getattr(self, 'config_manager', None)
-                self.merger_window = VideoMergerWindow(
-                    parent=None,
-                    vlc_instance=vlc_instance,
-                    bin_dir=bin_dir,
-                    config_manager=config_manager
-                )
-                self.merger_window.return_to_main.connect(self.show)
-                self.hide()
-                self.merger_window.show()
-                self.merger_window.raise_()
-                self.merger_window.activateWindow()
-                self.logger.info("STATUS: Video Merger launched as top-level window; main UI hidden.")
+                utilities_dir = os.path.join(self.base_dir, 'utilities')
+                merger_main_path = os.path.join(utilities_dir, 'video_merger.py')
+                if not os.path.exists(merger_main_path):
+                    self.logger.critical(f"ERROR: Video Merger script not found at {merger_main_path}")
+                    QMessageBox.critical(self, "Error", "Video Merger script not found.")
+                    return
+                command = [sys.executable, merger_main_path]
+                subprocess.Popen(command, cwd=self.base_dir)
+                self.close()
             except Exception as e:
-                self.logger.critical(f"ERROR: Failed to launch Video Merger in-process. Error: {e}")
+                self.logger.critical(f"ERROR: Failed to launch Video Merger. Error: {e}")
                 QMessageBox.critical(self, "Launch Failed", f"Could not launch Video Merger. Error: {e}")
-                self.show()
         
         def eventFilter(self, obj, event):
             if event.type() == QEvent.Resize:

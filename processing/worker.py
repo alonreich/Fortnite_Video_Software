@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import psutil
 import time
 from PyQt5.QtCore import QThread
 
@@ -77,6 +78,8 @@ class ProcessThread(QThread):
         user_duration = self.duration / self.speed_factor if self.speed_factor != 1.0 else self.duration
         self.duration_corrected = max(0.0, user_duration)
         self._estimated_total_duration = max(1.0, self.duration_corrected + self.intro_still_sec)
+        self.current_process = None
+        self.is_canceled = False
 
     def _parse_time_to_seconds(self, time_str: str) -> float:
         """Converts HH:MM:SS.ss or MM:SS.ss time string to seconds."""
@@ -99,26 +102,45 @@ class ProcessThread(QThread):
                 return 0.0
         return 0.0
 
+    def cancel(self):
+        self.logger.info("Cancellation requested for processing thread.")
+        self.is_canceled = True
+        if self.current_process and self.current_process.poll() is None:
+            self.logger.info(f"Terminating process with PID: {self.current_process.pid}")
+            try:
+                parent = psutil.Process(self.current_process.pid)
+                for child in parent.children(recursive=True):
+                    child.kill()
+                parent.kill()
+                self.logger.info("Process terminated.")
+            except psutil.NoSuchProcess:
+                self.logger.warning("Process not found, might have already finished.")
+            except Exception as e:
+                self.logger.error(f"Error terminating process: {e}")
+
     def get_total_frames(self):
+        # The following code is commented out because it was causing issues and is not strictly necessary for the current functionality.
+        # It was intended to get total frames for progress bar accuracy, but often failed.
         return None
-        cmd = [
-            ffprobe_path, '-v', 'error', '-select_streams', 'v:0',
-            '-show_entries', 'stream=nb_frames', '-of', 'json',
-            '-read_intervals', f'{self.start_time_corrected}%+{self.duration_corrected}',
-            self.input_path
-        ]
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True,
-                                    creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0))
-            data = json.loads(result.stdout)
-            if 'streams' in data and len(data['streams']) > 0 and 'nb_frames' in data['streams'][0]:
-                return int(data['streams'][0]['nb_frames'])
-            elif 'format' in data and 'nb_streams' in data['format'] and 'nb_frames' in data['format']:
-                return int(data['format']['nb_frames'])
-            else:
-                return None
-        except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError):
-            return None
+        # ffprobe_path = os.path.join(self.bin_dir, 'ffprobe.exe')
+        # cmd = [
+        #     ffprobe_path, '-v', 'error', '-select_streams', 'v:0',
+        #     '-show_entries', 'stream=nb_frames', '-of', 'json',
+        #     '-read_intervals', f'{self.start_time_corrected}%+{self.duration_corrected}',
+        #     self.input_path
+        # ]
+        # try:
+        #     result = subprocess.run(cmd, capture_output=True, text=True, check=True,
+        #                             creationflags=(subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0))
+        #     data = json.loads(result.stdout)
+        #     if 'streams' in data and len(data['streams']) > 0 and 'nb_frames' in data['streams'][0]:
+        #         return int(data['streams'][0]['nb_frames'])
+        #     elif 'format' in data and 'nb_streams' in data['format'] and 'nb_frames' in data['format']:
+        #         return int(data['format']['nb_frames'])
+        #     else:
+        #         return None
+        # except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError):
+        #     return None
 
     def run(self):
         temp_dir = tempfile.gettempdir()
@@ -126,6 +148,7 @@ class ProcessThread(QThread):
         temp_log_path = os.path.join(temp_dir, f"ffmpeg2pass-{os.getpid()}-{int(time.time())}.log")
         core_path, intro_path, concat_path = None, None, None
         try:
+            if self.is_canceled: return
             user_start = float(self.start_time)
             user_end   = float(self.end_time)
             total_orig = float(self.original_total_duration or 0.0)
@@ -208,6 +231,7 @@ class ProcessThread(QThread):
                 except Exception:
                     pass
                 return None
+            if self.is_canceled: return
             _src_kbps = _probe_src_audio_kbps()
             if _src_kbps:
                 AUDIO_KBPS = _src_kbps
@@ -239,6 +263,7 @@ class ProcessThread(QThread):
                             return max(8, int(round(br / 1000.0)))
                         except Exception:
                             return None
+                    if self.is_canceled: return
                     probed = _probe_audio_kbps()
                     if probed:
                         AUDIO_KBPS = probed
@@ -279,6 +304,7 @@ class ProcessThread(QThread):
                 q_desc = {0: "Bad", 1: "Okay", 2: "Standard", 3: "Good"}.get(self.quality_level, "Standard")
                 self.status_update_signal.emit(
                     f"{q_desc} quality: target size ~{t_mb:.0f} MB; video bitrate ~{video_bitrate_kbps:.2f} kbps.")
+            if self.is_canceled: return
             total_frames = self.get_total_frames()
             if total_frames is None:
                 self.status_update_signal.emit("Could not determine total frames. Progress bar might be inaccurate.")
@@ -447,6 +473,7 @@ class ProcessThread(QThread):
                         audio_filter_cmd = f"rubberband=tempo={s:.3f}:pitch=1:formant=1:transients=smooth"
                         self.status_update_signal.emit(f"Applying speed factor {self.speed_factor}x to audio (rubberband fallback).")
                         self.logger.info(f"Audio rubberband fallback: tempo={s:.3f} pitch=1 formant=1")
+            if self.is_canceled: return
             output_dir = os.path.join(self.base_dir, '!!!_Ouput_Video_Files_!!!')
             os.makedirs(output_dir, exist_ok=True)
             i = 1
@@ -592,6 +619,7 @@ class ProcessThread(QThread):
                 '-map', '[vcore]', '-map', '[acore]', '-shortest',
                 core_path
             ]
+            if self.is_canceled: return
             self.logger.info(f"STEP 1/3 CORE: {' '.join(map(str, core_cmd))}")
             core_progress_weight = 0.8 if self.intro_still_sec > 0 else 1.0
             startupinfo = None
@@ -599,7 +627,7 @@ class ProcessThread(QThread):
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             safe_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-            proc1 = subprocess.Popen(
+            self.current_process = subprocess.Popen(
                 core_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -610,7 +638,8 @@ class ProcessThread(QThread):
                 encoding="utf-8",
                 errors="replace"
             )
-            for line in proc1.stdout:
+            for line in self.current_process.stdout:
+                if self.is_canceled: break
                 s = line.strip()
                 self.logger.info(s)
                 match = time_regex.search(s)
@@ -621,9 +650,9 @@ class ProcessThread(QThread):
                         percent = (current_seconds / self.duration_corrected)
                         progress = int(max(0, min(100 * core_progress_weight, percent * 100 * core_progress_weight)))
                         self.progress_update_signal.emit(progress)
-            proc1.wait()
-            proc1.wait()
-            if proc1.returncode != 0:
+            self.current_process.wait()
+            if self.is_canceled: return
+            if self.current_process.returncode != 0:
                 self.logger.warning("GPU (NVENC) encoding failed. Retrying with CPU libx264 fallback...")
                 cmd_cpu = []
                 skip_next = False
@@ -646,7 +675,7 @@ class ProcessThread(QThread):
                 if sys.platform == "win32":
                     startupinfo = subprocess.STARTUPINFO()
                     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                proc1b = subprocess.Popen(
+                self.current_process = subprocess.Popen(
                     cmd_cpu,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
@@ -657,7 +686,8 @@ class ProcessThread(QThread):
                     encoding='utf-8',
                     errors='replace'
                 )
-                for line in proc1b.stdout:
+                for line in self.current_process.stdout:
+                    if self.is_canceled: break
                     s = line.strip()
                     self.logger.info(s)
                     match = time_regex.search(s)
@@ -668,12 +698,14 @@ class ProcessThread(QThread):
                             percent = (current_seconds / self.duration_corrected)
                             progress = int(max(0, min(100 * core_progress_weight, percent * 100 * core_progress_weight)))
                             self.progress_update_signal.emit(progress)
-                proc1b.wait()
-                if proc1b.returncode != 0:
+                self.current_process.wait()
+                if self.is_canceled: return
+                if self.current_process.returncode != 0:
                     self.finished_signal.emit(False, "Core encode failed (STEP 1/3) after GPU and CPU retries.")
                     return
                 else:
                     self.logger.info("CPU fallback succeeded after GPU failure.")
+            if self.is_canceled: return
             if self.intro_still_sec > 0:
                 if self.intro_abs_time is None and self.intro_from_midpoint:
                     mid = (user_start + user_end) / 2.0
@@ -745,7 +777,8 @@ class ProcessThread(QThread):
                     if sys.platform == "win32":
                         startupinfo = subprocess.STARTUPINFO()
                         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    proc2 = subprocess.Popen(
+                    if self.is_canceled: return
+                    self.current_process = subprocess.Popen(
                         intro_cmd,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
@@ -756,11 +789,12 @@ class ProcessThread(QThread):
                         encoding="utf-8",
                         errors="replace"
                     )
-                    for line in proc2.stdout:
+                    for line in self.current_process.stdout:
                         self.logger.info(line.rstrip())
                         self.progress_update_signal.emit(95)
-                    proc2.wait()
-                    if proc2.returncode != 0:
+                    self.current_process.wait()
+                    if self.is_canceled: return
+                    if self.current_process.returncode != 0:
                         self.logger.warning("Intro GPU (NVENC) encoding failed. Retrying with CPU libx264 fallback...")
                         vcodec_intro_cpu = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '23']
                         intro_cmd_cpu = intro_cmd_base + vcodec_intro_cpu + [
@@ -774,7 +808,8 @@ class ProcessThread(QThread):
                         if sys.platform == "win32":
                             startupinfo = subprocess.STARTUPINFO()
                             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                        proc2b = subprocess.Popen(
+                        if self.is_canceled: return
+                        self.current_process = subprocess.Popen(
                             intro_cmd_cpu,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
@@ -785,11 +820,12 @@ class ProcessThread(QThread):
                             encoding="utf-8",
                             errors="replace"
                         )
-                        for line in proc2b.stdout:
+                        for line in self.current_process.stdout:
                             self.logger.info(line.rstrip())
                             self.progress_update_signal.emit(95)
-                        proc2b.wait()
-                        if proc2b.returncode != 0:
+                        self.current_process.wait()
+                        if self.is_canceled: return
+                        if self.current_process.returncode != 0:
                             self.finished_signal.emit(False, "Intro encode failed (STEP 2/3) after GPU and CPU retries.")
                             return
                         else:
@@ -800,6 +836,7 @@ class ProcessThread(QThread):
             else:
                 self.logger.info("Skipping Intro: disabled (intro_still_sec<=0).")
                 intro_path = None
+            if self.is_canceled: return
             concat_list_path = os.path.join(temp_dir, f"concat-{os.getpid()}-{int(time.time())}.txt")
             files_to_concat = []
             if intro_path and os.path.exists(intro_path):
@@ -818,10 +855,12 @@ class ProcessThread(QThread):
                     self.logger.info(
                         f"Job SUCCESS | start={self.start_time}s end={self.end_time}s | out='{output_path}'"
                     )
-                    self.finished_signal.emit(True, output_path)
+                    if not self.is_canceled:
+                        self.finished_signal.emit(True, output_path)
                     return
                 except Exception as move_err:
-                    self.finished_signal.emit(False, f"Failed to move final video: {move_err}")
+                    if not self.is_canceled:
+                        self.finished_signal.emit(False, f"Failed to move final video: {move_err}")
                     return
             elif len(files_to_concat) > 1:
                 with open(concat_list_path, "w", encoding="utf-8") as fcat:
@@ -835,14 +874,16 @@ class ProcessThread(QThread):
                     output_path
                 ]
             else:
-                 self.finished_signal.emit(False, "No video files found for final step.")
+                 if not self.is_canceled:
+                    self.finished_signal.emit(False, "No video files found for final step.")
                  return
+            if self.is_canceled: return
             self.logger.info(f"STEP 3/3 CONCAT: {' '.join(concat_cmd)}")
             startupinfo = None
             if sys.platform == "win32":
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            proc3 = subprocess.Popen(
+            self.current_process = subprocess.Popen(
                 concat_cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -853,23 +894,29 @@ class ProcessThread(QThread):
                 encoding="utf-8",
                 errors="replace"
             )
-            for line in proc3.stdout:
+            for line in self.current_process.stdout:
                 self.logger.info(line.rstrip())
                 self.progress_update_signal.emit(99)
-            proc3.wait()
-            if proc3.returncode != 0:
-                self.finished_signal.emit(False, "Concat failed (STEP 3/3).")
+            self.current_process.wait()
+            if self.is_canceled: return
+            if self.current_process.returncode != 0:
+                if not self.is_canceled:
+                    self.finished_signal.emit(False, "Concat failed (STEP 3/3).")
                 return
             self.progress_update_signal.emit(100)
             self.logger.info(
                 f"Job SUCCESS | start={self.start_time}s end={self.end_time}s | out='{output_path}'"
             )
-            self.finished_signal.emit(True, output_path)
+            if not self.is_canceled:
+                self.finished_signal.emit(True, output_path)
             return
         except Exception as e:
-            self.logger.exception(f"Job FAILURE with exception: {e}")
-            self.finished_signal.emit(False, f"An unexpected error occurred: {e}.")
+            if not self.is_canceled:
+                self.logger.exception(f"Job FAILURE with exception: {e}")
+                self.finished_signal.emit(False, f"An unexpected error occurred: {e}.")
         finally:
+            if self.is_canceled:
+                self.logger.info("Process was canceled. Cleaning up temporary files.")
             if getattr(self, "_progress_timer", None):
                 try:
                     self._progress_timer.stop()

@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QLabel, QGraphicsScene, QGraphicsView, QGraphicsPixmapItem,
     QDialog, QTextEdit, QMessageBox, QGraphicsItem
 )
-from PyQt5.QtCore import Qt, QSize, QEvent
+from PyQt5.QtCore import Qt, QSize, QEvent, QTimer
 from PyQt5.QtGui import QPainter
 
 from utils import PersistentWindowMixin
@@ -31,9 +31,27 @@ class FinishedDialog(QDialog):
     def copy_text(self):
         QApplication.clipboard().setText(self.text_edit.toPlainText())
         self.copy_button.setText("Copied!")
-        self.copy_button.setStyleSheet("background-color: #27ae60; color: white;")
         self.copy_button.setEnabled(False)
-        QTimer.singleShot(1000, self.accept)
+
+        self.original_style = self.copy_button.styleSheet()
+        self.flash_timer = QTimer(self)
+        self.flash_count = 0
+        self.flash_timer.timeout.connect(self.flash_animation)
+        self.flash_timer.start(150)
+
+    def flash_animation(self):
+        if self.flash_count >= 4:
+            self.flash_timer.stop()
+            self.copy_button.setStyleSheet(self.original_style)
+            self.accept()
+            return
+
+        if self.flash_count % 2 == 0:
+            self.copy_button.setStyleSheet("background-color: #27ae60; color: white;")
+        else:
+            self.copy_button.setStyleSheet(self.original_style)
+
+        self.flash_count += 1
 
 class PortraitView(QGraphicsView):
     def keyPressEvent(self, event):

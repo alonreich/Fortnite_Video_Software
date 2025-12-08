@@ -63,6 +63,16 @@ class FfmpegMixin:
             except Exception:
                 pass
 
+        def cancel_processing(self):
+            if not self.is_processing:
+                return
+            
+            self.logger.info("CANCEL: User clicked cancel button.")
+            self._save_app_state_and_config()
+            
+            if self.process_thread and self.process_thread.isRunning():
+                self.process_thread.cancel()
+
         def start_processing(self):
             """
             Starts the video processing sequence in a separate thread; never let exceptions kill the app.
@@ -116,6 +126,7 @@ class FfmpegMixin:
                 self._proc_start_ts = time.time()
                 self._pulse_phase = 0
                 self.process_button.setEnabled(False)
+                self.cancel_button.setVisible(True)
                 self.progress_bar.setRange(0, 0)
                 self.progress_bar.setValue(0)
                 self._pulse_timer.start()
@@ -159,6 +170,7 @@ class FfmpegMixin:
                     QApplication.restoreOverrideCursor()
                     self.is_processing = False
                     self.process_button.setEnabled(True)
+                    self.cancel_button.setVisible(False)
                     self.progress_bar.setRange(0, 100)
                     self.progress_bar.setValue(0)
                     self.on_phase_update("Error")
@@ -175,6 +187,7 @@ class FfmpegMixin:
                 self._pulse_timer.stop()
             self._hide_processing_overlay()
             self.process_button.setEnabled(True)
+            self.cancel_button.setVisible(False)
             self.process_button.setText("Process Video")
             self.process_button.setIcon(self.style().standardIcon(QStyle.SP_DialogApplyButton))
             self.progress_bar.setRange(0, 100)
@@ -187,7 +200,12 @@ class FfmpegMixin:
             if success:
                 self._safe_set_phase("Done", ok=True)
             else:
-                self._safe_set_phase("Error", ok=False)
+                if "canceled by user" in message.lower():
+                    self._safe_set_phase("Canceled", ok=False)
+                    self._safe_status("Processing was canceled by the user.", "orange")
+                else:
+                    self._safe_set_phase("Error", ok=False)
+
             QApplication.restoreOverrideCursor()
             self.status_update_signal.emit("Ready to process another video.")
             try:
@@ -255,7 +273,8 @@ class FfmpegMixin:
                 if result == QDialog.Rejected:
                     self.handle_new_file()
             else:
-                self.show_message("Error", "Video processing failed.\n" + message)
+                if "canceled by user" not in message.lower():
+                    self.show_message("Error", "Video processing failed.\n" + message)
             try:
                 for h in getattr(self.logger, "handlers", []):
                     stream = getattr(h, "stream", None)

@@ -592,6 +592,30 @@ class UiBuilderMixin:
             self.process_button.setStyleSheet(self._original_process_btn_style)
             self.process_button.clicked.connect(self._on_process_clicked)
             self.process_button.setEnabled(False)
+
+            self.cancel_button = QPushButton("Cancel")
+            self.cancel_button.setObjectName("cancelButton")
+            self.cancel_button.setFixedSize(100, 70)
+            self.cancel_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #c0392b;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 16px;
+                    border-radius: 15px;
+                    margin-bottom: 6px;
+                }
+                QPushButton:hover { background-color: #e74c3c; }
+            """)
+            self.cancel_button.setVisible(False)
+            self.cancel_button.clicked.connect(self.cancel_processing)
+
+            process_button_layout = QHBoxLayout()
+            process_button_layout.setContentsMargins(0, 0, 0, 0)
+            process_button_layout.setSpacing(10)
+            process_button_layout.addWidget(self.process_button)
+            process_button_layout.addWidget(self.cancel_button)
+
             self.speed_spinbox = ClickableSpinBox()
             self.speed_spinbox.setDecimals(1)
             self.speed_spinbox.setSingleStep(0.1)
@@ -680,7 +704,7 @@ class UiBuilderMixin:
             process_controls.setColumnStretch(2, 1)
             process_controls.setColumnMinimumWidth(0, 0)
             process_controls.setColumnMinimumWidth(2, 0)
-            process_controls.addWidget(self.process_button,     0, 1, 1, 1, Qt.AlignHCenter | Qt.AlignVCenter)
+            process_controls.addLayout(process_button_layout,     0, 1, 1, 1, Qt.AlignHCenter | Qt.AlignVCenter)
             self._safe_add_to_grid(process_controls, self.left_group_widget,  0, 0, 1, 1, Qt.AlignLeft  | Qt.AlignVCenter)
             self._safe_add_to_grid(process_controls, self.right_group_widget, 0, 2, 1, 1, Qt.AlignRight | Qt.AlignVCenter)
             self.center_btn_container = process_controls

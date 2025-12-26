@@ -10,9 +10,7 @@ try:
     import vlc as _vlc_mod
 except Exception:
     _vlc_mod = None
-
-PREVIEW_VISUAL_LEAD_MS = 1100
-
+PREVIEW_VISUAL_LEAD_MS = 1000
 class MusicOffsetDialog(QDialog):
     def __init__(self, parent, vlc_instance, audio_path: str, initial_offset: float, bin_dir: str):
         super().__init__(parent)
@@ -347,7 +345,7 @@ class MusicOffsetDialog(QDialog):
             frac = float(self.slider.value()) / float(self._total_ms)
             frac = 0.0 if frac < 0.0 else (1.0 if frac > 1.0 else frac)
             wave_pos = self.wave.mapTo(self, self.wave.rect().topLeft())
-            x = wave_pos.x() + self._draw_x0 + round(frac * float(self._draw_w)) - 1
+            x = wave_pos.x() + self._draw_x0 + int(frac * float(self._draw_w)) - 1
             y = wave_pos.y() + self._draw_y0
             h = self._draw_h
             x = max(1, min(self.width() - 3, x))

@@ -34,6 +34,13 @@ class TrimmedSlider(QSlider):
         self._dragging_handle = None # 'start', 'end', 'playhead', or None
         self._hovering_handle = None # 'start', 'end', 'playhead', or None
 
+    def get_playhead_center_x(self):
+        """Returns the center x-coordinate of the visual playhead handle."""
+        playhead_rect = self._get_playhead_rect()
+        if playhead_rect.isValid():
+            return playhead_rect.center().x()
+        return -1
+
     def enable_trim_overlays(self, enabled: bool):
         self._show_trim = bool(enabled)
         self.update()

@@ -1,0 +1,6 @@
+!!!_Ouput_Video_Files_!!!/ 
+mp3/ 
+logs/ 
+config/ 
+*.mp4 
+__pycache__/

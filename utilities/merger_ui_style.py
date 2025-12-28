@@ -3,25 +3,25 @@ class MergerUIStyleMixin:
         """Applies a dark theme stylesheet similar to the main app."""
         self.parent.setStyleSheet("""
             QMainWindow, QWidget {
-                background-color: #2c3e50; /* Main dark background */
-                color: #ecf0f1; /* Light text */
+                background-color: #2c3e50;
+                color: #ecf0f1;
                 font-family: "Helvetica Neue", Arial, sans-serif;
                 font-size: 13px;
             }
             QLabel#titleLabel {
                 font-size: 18px;
                 font-weight: bold;
-                color: #3498db; /* Blue title color */
-                padding-bottom: 10px; /* Add some space below title */
+                color: #3498db;
+                padding-bottom: 10px;
             }
             QPushButton {
-                background-color: #3498db; /* Blue buttons */
+                background-color: #3498db;
                 color: #ffffff;
                 border: none;
-                padding: 8px 16px; /* Adjusted padding */
+                padding: 8px 16px;
                 border-radius: 6px;
                 font-weight: bold;
-                min-height: 20px; /* Ensure minimum height */
+                min-height: 20px;
             }
             QPushButton:hover {
                 background-color: #2980b9;
@@ -52,28 +52,28 @@ class MergerUIStyleMixin:
             }
             QPushButton#mergeButton {
                 background-color: #2ecc71;
-                color: #1e242d; /* Dark text on green */
+                color: #1e242d;
                 font-weight: bold;
-                padding: 10px 25px; /* Slightly larger padding */
+                padding: 10px 25px;
                 border-radius: 8px;
             }
             QPushButton#mergeButton:hover {
-                background-color: #48e68e; /* Lighter green on hover */
+                background-color: #48e68e;
             }
             QPushButton#mergeButton:disabled {
                  background-color: #566573;
                  color: #aeb6bf;
             }
             QPushButton#returnButton {
-                background-color: #bfa624; /* Yellow like main app merge */
+                background-color: #bfa624;
                 color: black;
                 font-weight: 600;
                 padding: 6px 12px;
                 border-radius: 6px;
-                min-height: 35px; /* Match height of other row buttons */
+                min-height: 35px;
             }
             QPushButton#returnButton:hover {
-                 background-color: #dcbd2f; /* Lighter yellow */
+                 background-color: #dcbd2f;
             }
             QPushButton#returnButton:disabled {
                  background-color: #566573;
@@ -87,10 +87,10 @@ class MergerUIStyleMixin:
                 outline: 0;
             }
             QListWidget::item {
-                padding: 0;               /* we paint the row ourselves */
-                margin: 2px 0;            /* tiny vertical gap only */
+                padding: 0;
+                margin: 2px 0;
                 border: 0;
-                background: transparent;  /* no double background behind our widget */
+                background: transparent;
                 color: #ecf0f1;
             }
             QCheckBox { spacing: 8px; }
@@ -116,7 +116,7 @@ class MergerUIStyleMixin:
                  background: #7289da; border: 1px solid #5c5c5c;
                  height: 18px; margin: 0 -2px; border-radius: 6px;
             }
-            QLabel { /* Default Label */
-                 padding: 0; margin: 0; /* Remove default padding for finer control */
+            QLabel {
+                 padding: 0; margin: 0;
             }
         """)

@@ -44,7 +44,7 @@ class PersistentWindowMixin:
             self.update_title()
             return
         except (FileNotFoundError, json.JSONDecodeError):
-            pass  # Use defaults if file not found or corrupt
+            pass
         self.move(self.default_geo['x'], self.default_geo['y'])
         self.resize(self.default_geo['w'], self.default_geo['h'])
         self.update_title()

@@ -295,7 +295,7 @@ class ProcessThread(QThread):
                 stats_1080 = (212, 173, 1687, 0)
                 normal_hp_1080 = (311, 47, 41, 980)
                 boss_hp_1080 = (325, 46, 138, 981)
-                team_1080  = (174, 161, 14, 801) # Unchanged by user
+                team_1080  = (174, 161, 14, 801)
                 if self.is_boss_hp:
                     hp_1080 = boss_hp_1080
                     self.logger.info("Using Boss HP coordinates.")
@@ -312,7 +312,7 @@ class ProcessThread(QThread):
                     scale_factor = 2560 / 1920.0
                 elif self.original_resolution == "3840x2160":
                     scale_factor = 3840 / 1920.0
-                else: # Fallback for other resolutions, e.g., 3440x1440 (anamorphic)
+                else:
                     scale_factor = in_w / 1920.0
                 hp = scale_box(hp_1080, scale_factor)
                 loot = scale_box(loot_1080, scale_factor)
@@ -323,10 +323,9 @@ class ProcessThread(QThread):
                 stats_area_crop_string = f"{stats[0]}:{stats[1]}:{stats[2]}:{stats[3]}"
                 team_crop_string       = f"{team[0]}:{team[1]}:{team[2]}:{team[3]}"
                 if self.is_boss_hp:
-                    healthbar_scale = 1.615116 # 2% reduction for Boss HP
+                    healthbar_scale = 1.615116
                 else:
-                    healthbar_scale = 1.717429 # 1% reduction for Normal HP
-                loot_scale = 1.772287
+                                         healthbar_scale = 1.717429                loot_scale = 1.772287
                 stats_scale = 2.0
                 team_scale = 1.61
                 healthbar_scaled_width  = int(round(hp_1080[0] * healthbar_scale))

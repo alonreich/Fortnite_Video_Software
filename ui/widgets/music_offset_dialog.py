@@ -10,7 +10,6 @@ try:
     import vlc as _vlc_mod
 except Exception:
     _vlc_mod = None
-
 PREVIEW_VISUAL_LEAD_MS = 1100
 
 class MusicOffsetDialog(QDialog):

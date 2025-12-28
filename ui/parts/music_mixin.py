@@ -170,7 +170,7 @@ class MusicMixin:
                     self.music_offset_input.setValue(dlg.selected_offset)
                     music_end = (self.trim_end or self.original_duration)
                     if self.music_start_sec is not None and self.music_end_sec is not None:
-                        music_end = self.music_end_sec # Preserve user-dragged duration
+                        music_end = self.music_end_sec
                     self.positionSlider.set_music_times(dlg.selected_offset, music_end)
                     self.logger.info("MUSIC: selected | file='%s' | start=%.3fs | vol_eff=%d%%",
                                     os.path.basename(p), float(dlg.selected_offset), self._music_eff())
@@ -367,7 +367,7 @@ class MusicMixin:
                         self.logger.debug(f"DIALOG: Music volume set to {new_eff_vol}%")
                         event.accept()
                     else:
-                        QDialog.keyPressEvent(dlg, event) # Pass other keys
+                        QDialog.keyPressEvent(dlg, event)
                 dlg.keyPressEvent = dialog_key_press
                 accepted = dlg.exec_()
                 try:

@@ -13,7 +13,7 @@ def clean_python_file(filepath):
         stripped = line.strip()
         if '"""' in stripped and stripped.count('"""') % 2 != 0:
             in_multiline_string = not in_multiline
-            if stripped == '"""': # Skip lines that are only '"""'
+            if stripped == '"""':
                 continue
         if in_multiline_string or '"""' in stripped:
              no_comments.append(line)
@@ -35,7 +35,7 @@ def clean_python_file(filepath):
     with open(filepath, 'w', encoding='utf-8') as f:
         if final_code:
             f.write('\n'.join(final_code))
-            f.write('\n') # Ensure trailing newline
+            f.write('\n')
 if __name__ == "__main__":
     for filepath in sys.argv[1:]:
         clean_python_file(filepath)

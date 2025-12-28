@@ -28,14 +28,14 @@ PID_FILE_PATH = os.path.join(tempfile.gettempdir(), PID_FILE_NAME)
 
 class CropApp(KeyboardShortcutMixin, PersistentWindowMixin, QWidget, CropAppHandlers):
 
-    def __init__(self, logger_instance, file_path=None): # Added logger_instance
+    def __init__(self, logger_instance, file_path=None):
         super().__init__()
-        self.logger = logger_instance # Store the injected logger
+        self.logger = logger_instance
         self.base_title = "Crop Tool"
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.base_dir = os.path.abspath(os.path.join(self.script_dir, '..'))
         self.config_path = os.path.join(self.base_dir, 'Config', 'crop_tool.conf')
-        self.last_dir = None # Initialize last_dir
+        self.last_dir = None
         self.bin_dir = os.path.abspath(os.path.join(self.base_dir, 'binaries'))
         self.snapshot_path = os.path.join(tempfile.gettempdir(), "snapshot.png")
         self.media_processor = MediaProcessor(self.bin_dir)
@@ -103,7 +103,7 @@ class CropApp(KeyboardShortcutMixin, PersistentWindowMixin, QWidget, CropAppHand
             self.timer.singleShot(0, self._deferred_launch_main_app)
             event.accept()
             return
-        super().keyPressEvent(event) # Pass other key events to the mixin
+        super().keyPressEvent(event)
 
     def _bring_app_to_foreground(self, pid):
         if not HAS_WIN32:
@@ -119,13 +119,13 @@ class CropApp(KeyboardShortcutMixin, PersistentWindowMixin, QWidget, CropAppHand
                         self.logger.info(f"Found target window for PID {pid}: '{window_title}'. Bringing to front.")
                         try:
                             win32gui.SetForegroundWindow(hwnd)
-                            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE) # Restore if minimized
-                            return None # Stop enumeration
+                            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                            return None
                         except Exception as e:
                             self.logger.error(f"Error setting foreground/showing window for HWND {hwnd}, PID {pid}: {e}")
                 except Exception as e:
                     pass
-            return 1 # Continue enumeration
+            return 1
         try:
             win32gui.EnumWindows(foreach_window, None)
         except Exception as e:
@@ -165,7 +165,7 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
-    player = CropApp(logger, file_path=file_path) # Pass the logger here
+    player = CropApp(logger, file_path=file_path)
     player.show()
     sys.exit(app.exec_())
 if __name__ == '__main__':

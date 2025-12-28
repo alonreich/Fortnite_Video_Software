@@ -309,9 +309,8 @@ class UiBuilderMixin:
                     margin: 0px;
                     border-radius: 3px;
                 }
-                QSlider#timelineSlider::handle:horizontal {
-                    background: #2196F3; /* A nice, professional blue */
-                    border: 1px solid #1976D2;
+                 QSlider#timelineSlider::handle:horizontal {
+                                         background: #2196F3;
                     width: 3px;
                     height: 20px;
                     line-height: 20px;

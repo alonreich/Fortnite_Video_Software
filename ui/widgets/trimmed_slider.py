@@ -20,7 +20,7 @@ class TrimmedSlider(QSlider):
                 background: #4a667a;
                 height: 2px;
                 border-radius: 4px;
-                margin-top: 6px;     /* was 14 */
+                margin-top: 6px;
                 margin-bottom: 6px;
             }
             QSlider::handle:horizontal {
@@ -39,8 +39,8 @@ class TrimmedSlider(QSlider):
         self._show_music = False
         self._dragging_handle = None
         self._hovering_handle = None
-        self._dragging_music_handle = None # 'start', 'end', 'body', or None
-        self._hovering_music_handle = None # 'start', 'end', 'body', or None
+        self._dragging_music_handle = None
+        self._hovering_music_handle = None
         self._music_drag_offset_sec = 0
 
     def set_music_visible(self, visible: bool):
@@ -84,9 +84,9 @@ class TrimmedSlider(QSlider):
         groove = self._get_groove_rect()
         if groove.width() <= 0:
             return self.minimum()
-        span = max(1, groove.width() - 1)  # prevent overshoot at the right edge
+        span = max(1, groove.width() - 1)
         pos = x_pos - groove.left()
-        pos = max(0, min(pos, span))       # clamp into [0..span]
+        pos = max(0, min(pos, span))
         return QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), pos, span)
 
     def _map_value_to_pos(self, value):
@@ -94,9 +94,9 @@ class TrimmedSlider(QSlider):
         minv, maxv = self.minimum(), self.maximum()
         if maxv <= minv:
             return groove.left()
-        span = max(1, groove.width() - 1)  # rightmost drawable pixel inside the groove
+        span = max(1, groove.width() - 1)
         ratio = (value - minv) / float(maxv - minv)
-        ratio = max(0.0, min(1.0, ratio))  # clamp
+        ratio = max(0.0, min(1.0, ratio))
         return int(groove.left() + ratio * span)
 
     def _get_handle_rect(self, handle_type, time_sec=None):
@@ -373,9 +373,9 @@ class TrimmedSlider(QSlider):
                 for handle_type in ['start', 'end']:
                     handle_rect = self._get_music_handle_rect(handle_type)
                     if not handle_rect.isValid(): continue
-                    color = QColor(255, 105, 180, 220) # Pink
+                    color = QColor(255, 105, 180, 220)
                     if self._hovering_music_handle == handle_type or self._dragging_music_handle == handle_type:
-                        color = QColor(255, 20, 147, 255) # Hotter pink
+                        color = QColor(255, 20, 147, 255)
                     p.setPen(color.darker(120))
                     p.setBrush(color)
                     path = QPainterPath()

@@ -402,7 +402,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             "Video Files (*.mp4 *.mkv *.mov *.avi)",
         )
         if file_paths:
-            file_to_load = file_paths[0] # Always choose the first one
+            file_to_load = file_paths[0]
             if len(file_paths) > 1:
                 self.logger.warning(
                     f"User selected {len(file_paths)} files. "

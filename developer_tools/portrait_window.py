@@ -79,7 +79,7 @@ class PortraitWindow(PersistentWindowMixin, QWidget):
         super(PortraitWindow, self).__init__(parent)
         self.original_resolution = original_resolution
         self.base_title = "Portrait Composer"
-        self.setFixedSize(594, 1000) # Set fixed size
+        self.setFixedSize(594, 1000)
         self.setup_persistence(
             config_path=config_path,
             settings_key='portrait_window_geometry',
@@ -87,8 +87,8 @@ class PortraitWindow(PersistentWindowMixin, QWidget):
             title_info_provider=self.get_title_info
         )
         self.scene = QGraphicsScene(self)
-        self.scene.setSceneRect(0, 0, 1150, 1920) # Fixed logical scene size
-        self.view = PortraitView(self.scene, self) # Use custom view
+        self.scene.setSceneRect(0, 0, 1150, 1920)
+        self.view = PortraitView(self.scene, self)
         self.view.setRenderHint(QPainter.Antialiasing)
         self.view.setRenderHint(QPainter.SmoothPixmapTransform)
         self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -117,7 +117,7 @@ class PortraitWindow(PersistentWindowMixin, QWidget):
         self.delete_button.setFixedSize(button_size)
         self.setLayout(layout)
         self.scene.selectionChanged.connect(self.on_selection_changed)
-        self.on_selection_changed() # Set initial button style
+        self.on_selection_changed()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

@@ -154,7 +154,7 @@ class CropAppHandlers:
             h = int(w / target_aspect)
             x = 0
             y = (snapshot_pixmap.height() - h) // 2
-        self.background_crop_width = w # Store the width
+        self.background_crop_width = w
         center_crop_rect = QRect(x, y, w, h)
         background_pixmap = snapshot_pixmap.copy(center_crop_rect)
         self.portrait_window.set_background(background_pixmap)

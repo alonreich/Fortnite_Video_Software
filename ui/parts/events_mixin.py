@@ -118,7 +118,6 @@ class EventsMixin:
         def _on_mobile_format_toggled(self, checked):
             if not getattr(self, "vlc_player", None):
                 return
-        
             if checked:
                 self.vlc_player.video_set_crop_geometry("115:192")
             else:

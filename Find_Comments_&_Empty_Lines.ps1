@@ -3,7 +3,7 @@ $excludedDirNames = @(
     'config',
     'logs',
     'mp3',
-    '!!!_Ouput_Video_Files_!!!'   # matches your actual folder spelling
+    '!!!_Ouput_Video_Files_!!!'
 )
 $excludedFileNames = @(
     'app.py',
@@ -14,10 +14,11 @@ $allowedExtensions = @(
     '.py','.txt','.md','.json','.ini','.cfg','.yml','.yaml',
     '.js','.ts','.html','.css','.qss','.bat','.cmd','.ps1'
 )
+Write-Output 'Instructions for an AI Agent: "Below are result of comments and empty lines which should be removed from the code which is inside the files. when removing these below comments, or empty lines, please becareful not to touch or hurt the code. only remove the comment and empty line surgecly, without impacting the code:"'
 Get-ChildItem -Recurse -File | Where-Object {
     if ($excludedFileNames -contains $_.Name) { return $false }
     if ($allowedExtensions -notcontains $_.Extension.ToLowerInvariant()) { return $false }
-    $dirParts = $_.DirectoryName -split '[\\/]'   # handles Windows + mixed slashes
+    $dirParts = $_.DirectoryName -split '[\\/]'
     foreach ($d in $excludedDirNames) {
         if ($dirParts -contains $d) { return $false }
     }
@@ -41,7 +42,7 @@ Get-ChildItem -Recurse -File | Where-Object {
         $hasBlockInlineComment = ($cur -match '/\*.*\*/')
         $hasHashInlineComment = ($cur -match '\s#(?![0-9A-Fa-f]{3,8}\b)')
         $isComment = ($isFullLineComment -or $hasBlockInlineComment -or $hasHashInlineComment)
-        if (($isEmpty -or $isComment) -and ($next -notmatch '^\s*(def|class)\b')) {
+        if (($isEmpty -or $isComment) -and ($next -notmatch '^\s*(def|class|from|import)\b')) {
             $kind = if ($isEmpty) { 'EMPTY' } else { 'COMMENT' }
             "{0}:{1} [{2}] {3}" -f $file, ($i + 1), $kind, ($cur -replace "`t","    ")
         }

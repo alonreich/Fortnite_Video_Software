@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 from PyQt5.QtCore import Qt, QTimer, QSize, QEvent
-from PyQt5.QtGui import QPixmap, QPainter, QFont, QIcon, QFontMetrics
+from PyQt5.QtGui import QPixmap, QPainter, QFont, QIcon, QFontMetrics, QColor, QPen
 from PyQt5.QtWidgets import (QGridLayout, QMessageBox, QSizePolicy, QHBoxLayout,
                              QVBoxLayout, QFrame, QSlider, QLabel, QStyle,
                              QPushButton, QSpinBox, QDoubleSpinBox, QCheckBox,
@@ -538,10 +538,10 @@ class UiBuilderMixin:
         self.quality_slider.setMaximumWidth(300)
         self.quality_slider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.tooltip_manager.add_tooltip(self.quality_slider,
-            "Bad = 10MB\n" \
-            "Okay = 15MB\n" \
-            "Standard = 40MB\n" \
-            "Good = 75MB\n" \
+            "Bad = 15MB\n"
+            "Okay = 25MB\n"
+            "Standard = 45MB\n"
+            "Good = 90MB\n"
             "Maximum = Original Video Size"
         )
         _knob = self.positionSlider.palette().highlight().color().name()
@@ -587,7 +587,7 @@ class UiBuilderMixin:
         self.tooltip_manager.add_tooltip(self.process_button, "Enter")
         self._original_process_btn_style = """
             QPushButton {
-                background-color: #148c14;
+                background-color: #2ab22a;
                 color: black;
                 font-weight: bold;
                 font-size: 16px;
@@ -685,10 +685,10 @@ class UiBuilderMixin:
         self.quality_container = QWidget(); self.quality_container.setLayout(vbox)
         self.quality_container.setObjectName("qualityContainer")
         self.tooltip_manager.add_tooltip(self.quality_container,
-            "Bad = 10MB\n" \
-            "Okay = 15MB\n" \
-            "Standard = 40MB\n" \
-            "Good = 75MB\n" \
+            "Bad = 15MB\n"
+            "Okay = 25MB\n"
+            "Standard = 45MB\n"
+            "Good = 90MB\n"
             "Maximum = Original Video Size"
         )
         self.quality_container.setMinimumWidth(0)
@@ -873,6 +873,7 @@ class UiBuilderMixin:
             return
         if self.mobile_checkbox.isChecked():
             self.portrait_mask_overlay.setGeometry(self.video_surface.rect())
+            self.portrait_mask_overlay.set_video_info(self.original_resolution, self.video_frame.size())
             self.portrait_mask_overlay.setVisible(True)
             self.portrait_mask_overlay.raise_()
             self.portrait_mask_overlay.update()
@@ -890,6 +891,14 @@ class VlcSafePortraitOverlay(QWidget):
         self.setAttribute(Qt.WA_AlwaysStackOnTop, True)
         self.setStyleSheet("background: transparent; border: none; margin: 0; padding: 0;")
         self.setVisible(False)
+        self.original_video_resolution = ""
+        self.current_video_frame_size = None
+
+    def set_video_info(self, resolution_str: str, frame_size):
+        if self.original_video_resolution != resolution_str or self.current_video_frame_size != frame_size:
+            self.original_video_resolution = resolution_str
+            self.current_video_frame_size = frame_size
+            self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)

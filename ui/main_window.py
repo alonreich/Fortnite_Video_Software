@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import QWidget, QStyle, QFileDialog, QMessageBox, QShortcut
 from system.config import ConfigManager
 from system.logger import setup_logger
 from ui.widgets.tooltip_manager import ToolTipManager
+from ui.widgets.custom_file_dialog import CustomFileDialog
 from ui.parts.ui_builder_mixin import UiBuilderMixin
 from ui.parts.phase_overlay_mixin import PhaseOverlayMixin
 from ui.parts.events_mixin import EventsMixin
@@ -347,21 +348,21 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                 padding: 5px;
             }
             QFrame#dropArea {
-                border: 3px dashed #3986ae;
+                border: 3px dashed #266b89;
                 border-radius: 10px;
                 background-color: #34495e;
                 padding: 20px;
             }
             QSpinBox, QDoubleSpinBox {
                 background-color: #4a667a;
-                border: 1px solid #3986ae;
+                border: 1px solid #266b89;
                 border-radius: 5px;
                 padding: 10px;
                 color: #ecf0f1;
                 font-size: 13px;
             }
             QPushButton {
-                background-color: #3986ae;
+                background-color: #266b89;
                 color: #ffffff;
                 border: none;
                 padding: 10px 18px;
@@ -371,7 +372,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             QPushButton:hover { background-color: #2980b9; }
             QPushButton#WhatsappButton { background-color: #25D366; }
             QPushButton#DoneButton { background-color: #e74c3c; }
-            QProgressBar { border: 1px solid #3986ae; border-radius: 5px; text-align: center; height: 18px; }
+            QProgressBar { border: 1px solid #266b89; border-radius: 5px; text-align: center; height: 18px; }
             QProgressBar::chunk { background-color: #2ecc71; }
             QToolTip {
                 font-family: Arial;
@@ -395,12 +396,10 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                 self.logger.error("FILE: failed to pause before dialog: %s", e)
             except Exception:
                 pass
-        file_paths, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select Video File(s)",
-            self.last_dir,
-            "Video Files (*.mp4 *.mkv *.mov *.avi)",
-        )
+        dialog = CustomFileDialog(self, "Select Video File(s)", self.last_dir, "Video Files (*.mp4 *.mkv *.mov *.avi)", config=self.config_manager)
+        file_paths = []
+        if dialog.exec_():
+            file_paths = dialog.selectedFiles()
         if file_paths:
             file_to_load = file_paths[0]
             if len(file_paths) > 1:

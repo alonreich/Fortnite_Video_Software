@@ -325,7 +325,8 @@ class ProcessThread(QThread):
                 if self.is_boss_hp:
                     healthbar_scale = 1.615116
                 else:
-                                         healthbar_scale = 1.717429                loot_scale = 1.772287
+                                         healthbar_scale = 1.717429
+                loot_scale = 1.772287
                 stats_scale = 2.0
                 team_scale = 1.61
                 healthbar_scaled_width  = int(round(hp_1080[0] * healthbar_scale))

@@ -74,11 +74,14 @@ class EventsMixin:
                 finally:
                     p.end()
                 return True
-            if obj is getattr(self, "video_frame", None):
+            if obj in (getattr(self, "video_frame", None), getattr(self, "video_surface", None)):
                 if event.type() in (QEvent.Resize, QEvent.Move):
                     try:
                         self._layout_volume_slider()
                         self._update_volume_badge()
+                        if hasattr(self, "portrait_mask_overlay"):
+                            self.portrait_mask_overlay.setGeometry(self.video_surface.rect())
+                            self._update_portrait_mask_overlay_state()
                     except Exception:
                         pass
                     return False
@@ -111,3 +114,12 @@ class EventsMixin:
             except Exception:
                 pass
             return super().resizeEvent(event)
+
+        def _on_mobile_format_toggled(self, checked):
+            if not getattr(self, "vlc_player", None):
+                return
+        
+            if checked:
+                self.vlc_player.video_set_crop_geometry("115:192")
+            else:
+                self.vlc_player.video_set_crop_geometry(None)

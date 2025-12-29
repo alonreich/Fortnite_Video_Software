@@ -469,10 +469,11 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         self.vlc_player.set_media(media)
         try:
             if sys.platform.startswith('win'):
-                self.vlc_player.set_hwnd(int(self.video_frame.winId()))
+                self.vlc_player.set_hwnd(int(self.video_surface.winId()))
         except Exception as hwnd_err:
              self.logger.error("Failed to set HWND for player: %s", hwnd_err)
         self.vlc_player.play()
+        QTimer.singleShot(150, lambda: self._on_mobile_format_toggled(self.mobile_checkbox.isChecked()))
         def apply_rate_and_volume():
             try:
                 self.vlc_player.set_rate(self.playback_rate)
@@ -483,6 +484,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                 self.logger.error(f"Error applying rate/volume after delay: {e}")
         QTimer.singleShot(100, apply_rate_and_volume)
         self.get_video_info()
+        self._update_portrait_mask_overlay_state()
 
     def reset_app_state(self):
         """Resets the UI and state so a new file can be loaded fresh."""
@@ -511,6 +513,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         except AttributeError:
             pass
         self.drop_label.setText("Drag & Drop\r\nVideo File Here:")
+        self._update_portrait_mask_overlay_state()
 
     def handle_new_file(self):
         """Clear state and immediately open file picker."""

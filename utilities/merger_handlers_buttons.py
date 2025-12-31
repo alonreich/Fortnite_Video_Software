@@ -24,8 +24,8 @@ class MergerHandlersButtonsMixin:
         if is_processing:
             self.parent.status_label.setText("Processing merge... Please wait.")
         elif n == 0:
-            self.parent.status_label.setText("Ready. Add 2 to 10 videos to begin.")
+            self.parent.status_label.setText("Ready. Add 2 to 20 videos to begin.")
         elif n < 2:
-            self.parent.status_label.setText(f"Waiting for more videos. Currently {n}/10.")
+            self.parent.status_label.setText(f"Waiting for more videos. Currently {n}/20.")
         else:
             self.parent.status_label.setText(f"Ready to merge {n} videos. Order is set.")

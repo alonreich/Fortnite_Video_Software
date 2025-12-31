@@ -318,29 +318,7 @@ class UiBuilderMixin:
         self.positionSlider.setFixedHeight(50)
         self.positionSlider.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.positionSlider.setObjectName("timelineSlider")
-        self.positionSlider.setStyleSheet(
-            "QSlider#timelineSlider { background: transparent; }\n" \
-            "QSlider#timelineSlider::groove:horizontal {\n" \
-            "    border: none;\n" \
-            "    background: #383838;\n" \
-            "    height: 6px;\n" \
-            "    margin: 0px;\n" \
-            "    border-radius: 3px;\n" \
-            "}\n" \
-            " QSlider#timelineSlider::handle:horizontal {\n" \
-            "                                    background: #2196F3;\n" \
-            "    width: 3px;\n" \
-            "    height: 20px;\n" \
-            "    line-height: 20px;\n" \
-            "    margin: -7px 0;\n" \
-            "    border-radius: 2px;\n" \
-            "}\n" \
-            "QSlider#timelineSlider::add-page:horizontal,\n" \
-            "QSlider#timelineSlider::sub-page:horizontal {\n" \
-            "    background: transparent;\n" \
-            "}"
-        )
-        self.tooltip_manager.add_tooltip(self.positionSlider, "Seek: ← →\nFast Seek: Shift + ←/→\nFine Seek: Ctrl + ←/→")
+        self.tooltip_manager.add_tooltip(self.positionSlider, "Seek: â†  â†’\nFast Seek: Shift + â† /â†’\nFine Seek: Ctrl + â† /â†’")
         self.positionSlider.sliderMoved.connect(self.set_vlc_position)
         self.positionSlider.rangeChanged.connect(lambda *_: self._maybe_enable_process())
         self.positionSlider.trim_times_changed.connect(self._on_slider_trim_changed)
@@ -355,44 +333,63 @@ class UiBuilderMixin:
         self.volume_slider.setTickPosition(QSlider.TicksBothSides)
         self.volume_slider.setTracking(True)
         self.volume_slider.setInvertedAppearance(True)
-        self.tooltip_manager.add_tooltip(self.volume_slider, "Adjust Volume: ↑ / ↓\nLarge Step: Shift + ↑ / ↓")
+        self.tooltip_manager.add_tooltip(self.volume_slider, "Adjust Volume: â†‘ / â†“\nLarge Step: Shift + â†‘ / â†“")
         try:
             eff = int(self.config_manager.config.get('last_volume', 100))
         except Exception:
             eff = 100
         raw = self.volume_slider.maximum() + self.volume_slider.minimum() - eff
-        self.volume_slider.setValue(max(self.volume_slider.minimum(),
-                                        min(self.volume_slider.maximum(), raw)))
-        _knob = self.positionSlider.palette().highlight().color().name()
-        self.volume_slider.setStyleSheet(f"""
-        QSlider#volumeSlider {{
-        padding: 0px;
-        background: transparent;
-        border: 0;
-        }}
-        QSlider#volumeSlider::groove:vertical {{
-        margin: 0px;
-        border: 1px solid #3498db;
-        background: qlineargradient(x1:0, y1:1, x2:0, y2:0,
-            stop:0   #e64c4c,
-            stop:0.25 #f7a8a8,
-            stop:0.50 #f2f2f2,
-            stop:0.75 #7bcf43,
-            stop:1   #009b00);
-        width: 22px;
-        border-radius: 6px;
-        }}
-        QSlider#volumeSlider::handle:vertical {{
-        background: {_knob};
-        border: 1px solid #5c5c5c;
-        width: 30px; height: 30px;
-        margin: -2px 0;
-        border-radius: 6px;
-        }}
-        QSlider#volumeSlider::sub-page:vertical,
-        QSlider#volumeSlider::add-page:vertical {{
-        background: transparent;
-        }}
+        self.volume_slider.setValue(max(self.volume_slider.minimum(), min(self.volume_slider.maximum(), raw)))
+        self.volume_slider.setStyleSheet("""
+            QSlider#volumeSlider {
+                padding: 0px;
+                background: transparent;
+                border: 0;
+            }
+            QSlider#volumeSlider::groove:vertical {
+                margin: 0px;
+                border: 1px solid #1f2a36;
+                background: qlineargradient(x1:0, y1:1, x2:0, y2:0,
+                    stop:0   #e64c4c,
+                    stop:0.25 #f7a8a8,
+                    stop:0.50 #f2f2f2,
+                    stop:0.75 #7bcf43,
+                    stop:1   #009b00);
+                width: 20px;
+                border-radius: 3px;
+            }
+            QSlider#volumeSlider::handle:vertical {
+                height: 40px;
+                width: 22px;
+                margin: 0 -2px;
+                border: 1px solid #1f2a36;
+                border-radius: 4px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #455A64,
+                    stop:0.40 #455A64,
+                    stop:0.42 #90A4AE, stop:0.44 #90A4AE,
+                    stop:0.46 #455A64,
+                    stop:0.48 #455A64,
+                    stop:0.50 #90A4AE, stop:0.52 #90A4AE,
+                    stop:0.54 #455A64,
+                    stop:0.56 #455A64,
+                    stop:0.58 #90A4AE, stop:0.60 #90A4AE,
+                    stop:0.62 #455A64,
+                    stop:1 #455A64);
+            }
+            QSlider#volumeSlider::handle:vertical:hover {
+                border: 1px solid #90A4AE;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #546E7A,
+                    stop:0.40 #546E7A, stop:0.42 #CFD8DC, stop:0.44 #CFD8DC,
+                    stop:0.46 #546E7A, stop:0.48 #546E7A, stop:0.50 #CFD8DC, stop:0.52 #CFD8DC,
+                    stop:0.54 #546E7A, stop:0.56 #546E7A, stop:0.58 #CFD8DC, stop:0.60 #CFD8DC,
+                    stop:0.62 #546E7A, stop:1 #546E7A);
+            }
+            QSlider#volumeSlider::sub-page:vertical,
+            QSlider#volumeSlider::add-page:vertical {
+                background: transparent;
+            }
         """)
         self.volume_slider.valueChanged.connect(self._on_master_volume_changed)
         self.volume_slider.sliderMoved.connect(lambda _: self._update_volume_badge())
@@ -436,8 +433,21 @@ class UiBuilderMixin:
                 background-color: #4a865a;
             }
         """)
+        _std_btn_style = """
+            QPushButton {
+                background-color: #266b89;
+                color: #ffffff;
+                border: none;
+                padding: 10px 18px;
+                border-radius: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #2980b9; }
+            QPushButton:pressed { background-color: #1f5f7a; }
+        """
         self.thumb_pick_btn = QPushButton("📸 Set Thumbnail 📸")
         self.thumb_pick_btn.setObjectName("thumbPickBtn")
+        self.thumb_pick_btn.setStyleSheet(_std_btn_style)
         self.tooltip_manager.add_tooltip(self.thumb_pick_btn, "Select Custom Thumbnail Picture For Sharing")
         self.thumb_pick_btn.setFocusPolicy(Qt.NoFocus)
         self.thumb_pick_btn.clicked.connect(self._pick_thumbnail_from_current_frame)
@@ -462,11 +472,13 @@ class UiBuilderMixin:
         self.end_second_input.valueChanged.connect(self._on_trim_spin_changed)
         self.start_trim_button = QPushButton("Set Start")
         self.start_trim_button.setObjectName("startTrimButton")
+        self.start_trim_button.setStyleSheet(_std_btn_style)
         self.start_trim_button.clicked.connect(self.set_start_time)
         self.start_trim_button.setFocusPolicy(Qt.NoFocus)
         self.tooltip_manager.add_tooltip(self.start_trim_button, "[")
         self.end_trim_button = QPushButton("Set End")
         self.end_trim_button.setObjectName("endTrimButton")
+        self.end_trim_button.setStyleSheet(_std_btn_style)
         self.end_trim_button.clicked.connect(self.set_end_time)
         self.end_trim_button.setFocusPolicy(Qt.NoFocus)
         self.tooltip_manager.add_tooltip(self.end_trim_button, "]")
@@ -558,8 +570,23 @@ class UiBuilderMixin:
             "  height: 20px; border-radius: 6px;"
             "}"
             "QSlider#qualitySlider::handle:horizontal {"
-            f"  background: {_knob}; border: 1px solid #5c5c5c;"
-            "  width: 27px; height: 22px; margin: 0px; border-radius: 6px;"
+            "  border: 1px solid #1f2a36;"
+            "  width: 30px; height: 26px; margin: 0px 0; border-radius: 4px;"
+            "  background: qlineargradient(x1:0, y1:0, x2:1, y2:0,"
+            "    stop:0 #546E7A, stop:0.33 #546E7A, stop:0.35 #90A4AE,"
+            "    stop:0.37 #90A4AE, stop:0.39 #546E7A, stop:0.47 #546E7A,"
+            "    stop:0.49 #90A4AE, stop:0.51 #90A4AE, stop:0.53 #546E7A,"
+            "    stop:0.61 #546E7A, stop:0.63 #90A4AE, stop:0.65 #90A4AE,"
+            "    stop:0.67 #546E7A, stop:1.0 #546E7A);"
+            "}"
+            "QSlider#qualitySlider::handle:horizontal:hover {"
+            "  border: 1px solid #90A4AE;"
+            "  background: qlineargradient(x1:0, y1:0, x2:1, y2:0,"
+            "    stop:0 #546E7A, stop:0.33 #546E7A, stop:0.35 #90A4AE,"
+            "    stop:0.37 #90A4AE, stop:0.39 #546E7A, stop:0.47 #546E7A,"
+            "    stop:0.49 #90A4AE, stop:0.51 #90A4AE, stop:0.53 #546E7A,"
+            "    stop:0.61 #546E7A, stop:0.63 #90A4AE, stop:0.65 #90A4AE,"
+            "    stop:0.67 #546E7A, stop:1.0 #546E7A);"
             "}"
             "QSlider#qualitySlider::sub-page:horizontal, QSlider#qualitySlider::add-page:horizontal { background: transparent; }"
         )
@@ -717,6 +744,21 @@ class UiBuilderMixin:
         self.speed_spinbox.valueChanged.connect(lambda _: self._recenter_process_controls())
         left_layout.addSpacing(-10)
         self.progress_bar = QProgressBar()
+        self.progress_bar.setObjectName("mainProgressBar")
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #266b89;
+                border-radius: 5px;
+                text-align: center;
+                height: 18px;
+                background-color: #34495e;
+                color: #ecf0f1;
+            }
+            QProgressBar::chunk {
+                background-color: #2ecc71;
+                border-radius: 4px;
+            }
+        """)
         self.progress_bar.setValue(0)
         left_layout.addWidget(self.progress_bar)
         self.progress_update_signal.connect(self.on_progress)

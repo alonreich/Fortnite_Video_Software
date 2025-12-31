@@ -241,6 +241,8 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
         try:
             self.logger.info("ACTION: Launching Advanced Video Editor via F11...")
             command = [sys.executable, "-m", "advanced.advanced_video_editor"]
+            if self.input_file_path:
+                command.append(self.input_file_path)
             subprocess.Popen(command, cwd=self.base_dir)
             self.logger.info("Advanced Editor process started. Closing main app.")
             self.close()
@@ -385,6 +387,22 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             }
         """)
 
+    def refresh_ui_styles(self):
+        """
+        Nuclear option: Forces a deep style refresh on the window and all children.
+        This fixes buttons losing color after dialogs close.
+        """
+        try:
+            self.set_style()
+            self.style().unpolish(self)
+            self.style().polish(self)
+            for widget in self.findChildren(QWidget):
+                widget.style().unpolish(widget)
+                widget.style().polish(widget)
+            self.update()
+        except Exception:
+            pass
+
     def select_file(self):
         try:
             if getattr(self, "vlc_player", None) and self.vlc_player.is_playing():
@@ -396,10 +414,18 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                 self.logger.error("FILE: failed to pause before dialog: %s", e)
             except Exception:
                 pass
-        dialog = CustomFileDialog(self, "Select Video File(s)", self.last_dir, "Video Files (*.mp4 *.mkv *.mov *.avi)", config=self.config_manager)
+        dialog = CustomFileDialog(
+            None, 
+            "Select Video File(s)",
+            self.last_dir,
+            "Video Files (*.mp4 *.mkv *.mov *.avi)",
+            config=self.config_manager,
+        )
+        dialog.setWindowModality(Qt.ApplicationModal)
         file_paths = []
         if dialog.exec_():
             file_paths = dialog.selectedFiles()
+        self.refresh_ui_styles()
         if file_paths:
             file_to_load = file_paths[0]
             if len(file_paths) > 1:
@@ -408,7 +434,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
                     f"Loading only the first one as per design: {os.path.basename(file_to_load)}"
                 )
                 QMessageBox.information(
-                    self, 
+                    self,
                     "Multiple Files Selected",
                     f"You selected {len(file_paths)} files. Only the first file, '{os.path.basename(file_to_load)}', will be loaded."
                 )
@@ -629,9 +655,6 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             pass
 
     def share_via_whatsapp(self):
-        """
-        Opens a web browser to the WhatsApp Web URL.
-        """
         url = "https://web.whatsapp.com"
         try:
             if sys.platform == 'win32':

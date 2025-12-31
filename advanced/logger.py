@@ -5,7 +5,7 @@ from logging.handlers import RotatingFileHandler
 def setup_logger():
     log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
     os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, 'advanced_editor.log')
+    log_file = os.path.join(log_dir, 'Advanced_Editor_App.log')
     logger = logging.getLogger("Advanced_Video_Editor")
     logger.setLevel(logging.INFO)
     if logger.hasHandlers():

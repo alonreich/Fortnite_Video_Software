@@ -460,7 +460,7 @@ class ProcessThread(QThread):
                 if video_bitrate_kbps is None:
                     vcodec = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18']
                 else:
-                    vcodec = ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23']
+                    vcodec = ['-c:v', 'libx264', '-preset', 'veryfast', '-b:v', f'{video_bitrate_kbps}k']
             else:
                 strict_size = (effective_duration <= 20.0)
                 if strict_size:

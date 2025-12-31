@@ -1,14 +1,3 @@
-# To upgrade pip manually:
-# "%LOCALAPPDATA%\Programs\Python\Python313\python.exe" -m pip install --upgrade pip
-
-
-# To install manually the pip packages:
-# "%LOCALAPPDATA%\Programs\Python\Python313\python.exe" -m pip install PyQt5 psutil python-vlc pypiwin32
-
-# The following pip installs are only for the Advanced Video Editor:
-# (No new packages are required yet)
-
-
 # Project Goal and description:
 a quick video gpu based software editor which is free of use, free of advertisement, yet quick to create an easy to share Fortnite cool video clips with family or friends.
 The app is devided into 4 different parts/apps: Main App.py, Video Merger, Crop Tools, and Advanced Video Editor.
@@ -17,14 +6,10 @@ Video Merger = Join multiple short videos into a single long video file.
 Crop Tools = Provide exact user friendly coordinations on the screen for any game/app.
 Advanced Video Editor = A multi-track video editor for sequencing clips.
 
-
 # General Project Guidelines:
-1. NEVER USE GIT to push/pull/restore files without an explicit accurate intentinal request. DO NOT USE GIT FOR ANYTHING.
-2. No comments in the code. if you see comments which are not in "Installer.ps1", "app.py", and "project_structure.txt" remove them. do not create your own comments on new piecees of code.
-3. Each code/script file, should never exceed 150 - 170 lines of code max per file. if 150 lines should exceeded devide the code into multiple file in such way that eventually no file exceed 150 - 170 lines of code.
-4. While working on the app/files of this project, if you see a miss information or any update in the file structure/role/parts please on the fly update it here in the .\project_structure.txt file accordinly.
-5. Video tempo and sound of the original video temp changes according to the speed multiplier(Preview of the video changes accord as well), however, background music NEVER changes tempo/rythm.
-
+1. Each code/script file, should never exceed 150 - 170 lines of code max per file. if 150 lines should exceeded devide the code into multiple file in such way that eventually no file exceed 150 - 170 lines of code.
+2. While working on the app/files of this project, if you see a miss information or any update in the file structure/role/parts please on the fly update it here in the .\project_structure.txt file accordinly.
+3. Video tempo and sound of the original video temp changes according to the speed multiplier(Preview of the video changes accord as well), however, background music NEVER changes tempo/rythm.
 
 # File Map Structure:
 .\

@@ -1,5 +1,6 @@
 import sys
 import os
+import shutil
 sys.dont_write_bytecode = True
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -11,147 +12,173 @@ import threading
 import subprocess
 import tempfile
 import time
-from PyQt5.QtWidgets import QApplication,QMainWindow,QWidget,QVBoxLayout,QFrame,QLabel,QPushButton,QHBoxLayout,QStyle,QShortcut,QFileDialog,QDoubleSpinBox,QSpinBox,QProgressBar
+from PyQt5.QtWidgets import QApplication,QMainWindow,QWidget,QVBoxLayout,QFrame,QLabel,QPushButton,QHBoxLayout,QStyle,QShortcut,QFileDialog,QDoubleSpinBox,QSpinBox,QProgressBar,QSlider,QCheckBox
 from PyQt5.QtCore import Qt,QSize,QTimer,pyqtSignal,QObject
-from PyQt5.QtGui import QFont,QKeyEvent,QKeySequence
+from PyQt5.QtGui import QFont,QKeyEvent,QKeySequence,QCursor
 from advanced.logger import setup_logger
 from advanced.config import ConfigManager
 from advanced.timeline import TimelineView,Clip
 from advanced.player import Player
+from ui.parts.phase_overlay_mixin import PhaseOverlayMixin
 
 class ExportWorker(QObject):
-    progress = pyqtSignal(int,str)
+    progress = pyqtSignal(int, str)
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
+
     def __init__(self, base_dir, timeline_state, output_path, parent=None):
         super().__init__(parent)
         self.base_dir = base_dir
         self.timeline_state = timeline_state
         self.output_path = output_path
         self._stop = False
+
     def stop(self):
         self._stop = True
+
     def _find_ffmpeg(self):
         exe = os.path.join(self.base_dir, 'binaries', 'ffmpeg.exe')
         if os.path.exists(exe):
             return exe
         return 'ffmpeg'
-    def _atempo_chain(self, speed):
-        speed = float(speed)
-        if speed <= 0:
-            return []
-        filters = []
-        remaining = speed
-        while remaining > 2.0:
-            filters.append('atempo=2.0')
-            remaining /= 2.0
-        while remaining < 0.5:
-            filters.append('atempo=0.5')
-            remaining /= 0.5
-        filters.append(f'atempo={remaining:.6f}')
-        return filters
-    def _is_audio_only(self, path):
-        ext = os.path.splitext(path.lower())[1]
-        return ext in ['.mp3','.wav']
-    def _build_segments(self):
-        layers = []
-        for layer_data in self.timeline_state:
-            layer_clips = []
-            for cd in layer_data:
-                layer_clips.append(Clip.from_dict(cd))
-            layers.append(layer_clips)
-        cut_points = set([0.0])
-        for layer in layers:
-            for c in layer:
-                cut_points.add(float(c.start_time))
-                cut_points.add(float(c.start_time + c.duration))
-        pts = sorted([p for p in cut_points if p >= 0.0])
-        segments = []
-        for i in range(len(pts) - 1):
-            t0 = pts[i]
-            t1 = pts[i + 1]
-            if t1 <= t0:
-                continue
-            found = None
-            for layer in layers:
-                for c in layer:
-                    if c.start_time <= t0 < c.start_time + c.duration:
-                        found = c
-                        break
-                if found:
-                    break
-            if found is None:
-                continue
-            seg_dur = t1 - t0
-            seg_off = t0 - found.start_time
-            seg = {'file_path': found.file_path,'source_in': float(found.source_in) + seg_off * float(found.speed),'speed': float(found.speed),'volume': int(found.volume),'duration': float(seg_dur),'audio_only': self._is_audio_only(found.file_path)}
-            segments.append(seg)
-        return segments
+
+    def _escape_filter_path(self, path):
+        path = path.replace('\\', '/')
+        path = path.replace(':', '\\:')
+        return path
+
     def run(self):
         try:
             ffmpeg = self._find_ffmpeg()
-            segments = self._build_segments()
-            if not segments:
-                self.error.emit('No clips on timeline to export.')
+            all_clips = []
+            unique_files = []
+            file_map = {}
+            total_duration = 0.0
+            for layer_idx, layer_data in enumerate(self.timeline_state):
+                for clip_data in layer_data:
+                    clip = Clip.from_dict(clip_data)
+                    clip.layer_idx = layer_idx
+                    all_clips.append(clip)
+                    if clip.file_path not in unique_files:
+                        file_map[clip.file_path] = len(unique_files)
+                        unique_files.append(clip.file_path)
+                    end_time = clip.start_time + clip.duration
+                    if end_time > total_duration:
+                        total_duration = end_time
+            if not all_clips:
+                self.error.emit("Timeline is empty.")
                 return
-            tmp_dir = tempfile.mkdtemp(prefix='adv_export_')
-            rendered = []
-            for idx, seg in enumerate(segments):
+            if total_duration <= 0:
+                self.error.emit("Invalid duration.")
+                return
+            filter_chains = []
+            filter_chains.append(f"color=c=black:s=1280x720:d={total_duration:.3f}[bg]")
+            last_bg_label = "bg"
+            audio_labels = []
+            self.progress.emit(10, "Generating render graph...")
+            sorted_clips = sorted(all_clips, key=lambda c: (c.layer_idx, c.start_time))
+            for idx, clip in enumerate(sorted_clips):
                 if self._stop:
-                    self.error.emit('Export cancelled.')
+                    self.error.emit("Export cancelled.")
                     return
-                pct = int((idx / max(1, len(segments))) * 100)
-                self.progress.emit(pct, f"Rendering segment {idx + 1}/{len(segments)}")
-                in_path = seg['file_path']
-                out_path = os.path.join(tmp_dir, f"seg_{idx:05d}.mp4")
-                ss = max(0.0, seg['source_in'])
-                src_dur = max(0.01, seg['duration'] * seg['speed'])
-                vf = f"setpts=PTS/{seg['speed']:.6f}"
-                vol = max(0.0, seg['volume'] / 100.0)
-                af_filters = [f'volume={vol:.6f}'] + self._atempo_chain(seg['speed'])
-                af = ','.join(af_filters)
-                cmd = [ffmpeg,'-y','-ss',f'{ss:.6f}','-t',f'{src_dur:.6f}','-i',in_path]
-                if seg['audio_only']:
-                    cmd += ['-f','lavfi','-i','color=c=black:s=1280x720:r=30']
-                    cmd += ['-shortest','-map','1:v:0','-map','0:a:0']
-                cmd += ['-vf',vf,'-af',af,'-c:v','libx264','-preset','veryfast','-crf','18','-c:a','aac','-b:a','192k','-movflags','+faststart',out_path]
-                startupinfo = None
-                if os.name == 'nt':
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                p = subprocess.run(cmd, capture_output=True, text=True, startupinfo=startupinfo)
-                if p.returncode != 0:
-                    msg = (p.stderr or '').strip()
-                    if not msg:
-                        msg = 'ffmpeg failed.'
-                    self.error.emit(msg)
-                    return
-                rendered.append(out_path)
-            self.progress.emit(100, 'Finalizing output')
-            list_path = os.path.join(tmp_dir, 'concat.txt')
-            with open(list_path, 'w', encoding='utf-8') as f:
-                for rp in rendered:
-                    safe_path=rp.replace("'", "\\'")
-                    f.write(f"file '{safe_path}'\n")
-            cmd2 = [ffmpeg,'-y','-f','concat','-safe','0','-i',list_path,'-c','copy',self.output_path]
+                inp_idx = file_map[clip.file_path]
+                src_dur = clip.duration * clip.speed
+                v_label = f"v{idx}"
+                v_processed = f"v{idx}_out"
+                filters = [
+                    f"[{inp_idx}:v]trim=start={clip.source_in:.3f}:duration={src_dur:.3f}",
+                    "setpts=PTS-STARTPTS"
+                ]
+                if abs(clip.speed - 1.0) > 0.001:
+                    filters.append(f"setpts=PTS/{clip.speed:.4f}")
+                filters.append("scale=1280:720:force_original_aspect_ratio=decrease")
+                filters.append("pad=1280:720:(ow-iw)/2:(oh-ih)/2")
+                filters.append(f"setpts=PTS+{clip.start_time:.3f}/TB")
+                chain_str = ",".join(filters)
+                filter_chains.append(f"{chain_str}[{v_processed}]")
+                next_bg_label = f"bg_{idx}"
+                overlay_cmd = f"[{last_bg_label}][{v_processed}]overlay=enable='between(t,{clip.start_time:.3f},{clip.start_time + clip.duration:.3f})':eof_action=pass:shortest=0[{next_bg_label}]"
+                filter_chains.append(overlay_cmd)
+                last_bg_label = next_bg_label
+                a_label = f"a{idx}"
+                afilters = [
+                    f"[{inp_idx}:a]atrim=start={clip.source_in:.3f}:duration={src_dur:.3f}",
+                    "asetpts=PTS-STARTPTS"
+                ]
+                if abs(clip.speed - 1.0) > 0.001:
+                    speed = clip.speed
+                    while speed > 2.0:
+                        afilters.append("atempo=2.0")
+                        speed /= 2.0
+                    while speed < 0.5:
+                        afilters.append("atempo=0.5")
+                        speed /= 0.5
+                    afilters.append(f"atempo={speed:.4f}")
+                vol_factor = clip.volume / 100.0
+                afilters.append(f"volume={vol_factor:.2f}")
+                start_ms = int(clip.start_time * 1000)
+                afilters.append(f"adelay={start_ms}|{start_ms}")
+                chain_str_a = ",".join(afilters)
+                filter_chains.append(f"{chain_str_a}[{a_label}]")
+                audio_labels.append(f"[{a_label}]")
+            if audio_labels:
+                filter_chains.append(f"{ ''.join(audio_labels)}amix=inputs={len(audio_labels)}:dropout_transition=0:normalize=0[a_out]")
+            else:
+                filter_chains.append(f"anullsrc=channel_layout=stereo:sample_rate=44100:d={total_duration:.3f}[a_out]")
+            filter_script = ";\n".join(filter_chains)
+            tmp_script_fd, tmp_script_path = tempfile.mkstemp(suffix='.txt', text=True)
+            with os.fdopen(tmp_script_fd, 'w') as f:
+                f.write(filter_script)
+            self.progress.emit(50, "Encoding...")
+            cmd = [
+                ffmpeg,
+                '-y',
+            ]
+            for fpath in unique_files:
+                cmd.extend(['-i', fpath])
+            cmd.extend(['-filter_complex_script', tmp_script_path])
+            cmd.extend(['-map', f'[{last_bg_label}]', '-map', '[a_out]'])
+            cmd.extend([
+                '-c:v', 'libx264',
+                '-preset', 'medium',
+                '-crf', '23',
+                '-c:a', 'aac',
+                '-b:a', '192k',
+                '-movflags', '+faststart',
+                self.output_path
+            ])
             startupinfo = None
             if os.name == 'nt':
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            p2 = subprocess.run(cmd2, capture_output=True, text=True, startupinfo=startupinfo)
-            if p2.returncode != 0:
-                msg = (p2.stderr or '').strip()
-                if not msg:
-                    msg = 'ffmpeg concat failed.'
-                self.error.emit(msg)
+            self.progress.emit(60, "FFmpeg running...")
+            process = subprocess.Popen(
+                cmd, 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.PIPE, 
+                universal_newlines=True,
+                startupinfo=startupinfo
+            )
+            stdout, stderr = process.communicate()
+            os.remove(tmp_script_path)
+            if process.returncode != 0:
+                self.error.emit(f"FFmpeg Error: {stderr[-200:] if stderr else 'Unknown'}")
                 return
+            self.progress.emit(100, "Done!")
             self.finished.emit(self.output_path)
         except Exception as e:
-            self.error.emit(str(e))
+            self.error.emit(f"Critical Error: {str(e)}")
 
 class ClipInspector(QFrame):
     speed_changed = pyqtSignal(float)
     volume_changed = pyqtSignal(int)
+    layer_up = pyqtSignal()
+    layer_down = pyqtSignal()
+    split_clip = pyqtSignal()
+    mute_toggled = pyqtSignal(bool)
+    solo_toggled = pyqtSignal(bool)
+    lock_toggled = pyqtSignal(bool)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedWidth(320)
@@ -159,28 +186,67 @@ class ClipInspector(QFrame):
         self.clip = None
         self._loading = False
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12,12,12,12)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
-        self.title = QLabel("Clip Inspector")
+        self.title = QLabel("File Properties")
         self.title.setStyleSheet("font-weight: bold; font-size: 16px;")
         layout.addWidget(self.title)
         self.lbl_name = QLabel("No clip selected")
         self.lbl_name.setWordWrap(True)
         layout.addWidget(self.lbl_name)
-        self.lbl_speed = QLabel("Speed")
+        self.lbl_speed = QLabel("Speed Multiplier")
+        self.lbl_speed.setStyleSheet("font-size: 11px; font-weight: bold;")
         layout.addWidget(self.lbl_speed)
         self.spin_speed = QDoubleSpinBox()
         self.spin_speed.setRange(0.25, 4.0)
         self.spin_speed.setSingleStep(0.25)
+        self.spin_speed.setStyleSheet("font-size: 11px;")
+        self.spin_speed.setFixedHeight(20)
         self.spin_speed.valueChanged.connect(self._emit_speed)
         layout.addWidget(self.spin_speed)
         self.lbl_vol = QLabel("Volume")
         layout.addWidget(self.lbl_vol)
-        self.spin_vol = QSpinBox()
-        self.spin_vol.setRange(0, 200)
-        self.spin_vol.setSingleStep(10)
-        self.spin_vol.valueChanged.connect(self._emit_volume)
-        layout.addWidget(self.spin_vol)
+        vol_layout = QHBoxLayout()
+        self.slider_vol = QSlider(Qt.Horizontal)
+        self.slider_vol.setRange(0, 200)
+        self.slider_vol.setSingleStep(1)
+        self.slider_vol.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #bbb;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #e64c4c, stop:0.5 #f2f2f2, stop:1 #009b00);
+                height: 10px;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #3498db;
+                border: 1px solid #5c5c5c;
+                width: 18px;
+                margin: -4px 0;
+                border-radius: 8px;
+            }
+        """)
+        self.slider_vol.valueChanged.connect(self._emit_volume)
+        vol_layout.addWidget(self.slider_vol)
+        self.lbl_vol_value = QLabel("100%")
+        self.lbl_vol_value.setFixedWidth(40)
+        vol_layout.addWidget(self.lbl_vol_value)
+        layout.addLayout(vol_layout)
+        btn_layout = QHBoxLayout()
+        self.btn_layer_up = self._create_action_button("▲ Move Up", self.layer_up)
+        self.btn_layer_down = self._create_action_button("▼ Move Down", self.layer_down)
+        self.btn_split = self._create_action_button("✁ Split", self.split_clip)
+        btn_layout.addWidget(self.btn_layer_up)
+        btn_layout.addWidget(self.btn_layer_down)
+        btn_layout.addWidget(self.btn_split)
+        layout.addLayout(btn_layout)
+        track_controls_layout = QHBoxLayout()
+        self.mute_btn = self._create_track_control_button("Mute", self.mute_toggled)
+        self.solo_btn = self._create_track_control_button("Solo", self.solo_toggled)
+        self.lock_btn = self._create_track_control_button("Lock", self.lock_toggled)
+        track_controls_layout.addWidget(self.mute_btn)
+        track_controls_layout.addWidget(self.solo_btn)
+        track_controls_layout.addWidget(self.lock_btn)
+        layout.addLayout(track_controls_layout)
         self.lbl_status = QLabel("")
         self.lbl_status.setWordWrap(True)
         self.lbl_status.setStyleSheet("color: #bdc3c7;")
@@ -193,20 +259,59 @@ class ClipInspector(QFrame):
         layout.addWidget(self.progress)
         layout.addStretch()
         self.setEnabled(False)
-    def set_clip(self, clip):
+
+    def _create_action_button(self, text, signal):
+        btn = QPushButton(text)
+        btn.setStyleSheet("""
+            QPushButton {
+                background-color: #266b89;
+                color: #ffffff;
+                border: none;
+                padding: 10px 18px;
+                border-radius: 8px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #2980b9; }
+        """)
+        btn.setCursor(QCursor(Qt.PointingHandCursor))
+        btn.clicked.connect(signal)
+        return btn
+
+    def _create_track_control_button(self, text, signal):
+        btn = QPushButton(text)
+        btn.setCheckable(True)
+        btn.setStyleSheet("""
+            QPushButton {
+                background-color: #7f8c8d;
+            }
+            QPushButton:checked {
+                background-color: #e74c3c;
+            }
+        """)
+        btn.toggled.connect(signal)
+        return btn
+
+    def set_clip(self, clip, layer=None):
         self._loading = True
         self.clip = clip
         if clip is None:
             self.lbl_name.setText("No clip selected")
             self.spin_speed.setValue(1.0)
-            self.spin_vol.setValue(100)
+            self.slider_vol.setValue(100)
+            self.lbl_vol_value.setText("100%")
             self.setEnabled(False)
         else:
             self.lbl_name.setText(os.path.basename(clip.file_path))
             self.spin_speed.setValue(float(clip.speed))
-            self.spin_vol.setValue(int(clip.volume))
+            self.slider_vol.setValue(int(clip.volume))
+            self.lbl_vol_value.setText(f"{int(clip.volume)}%")
             self.setEnabled(True)
+            if layer:
+                self.mute_btn.setChecked(layer.is_muted)
+                self.solo_btn.setChecked(layer.is_solo)
+                self.lock_btn.setChecked(layer.is_locked)
         self._loading = False
+
     def _emit_speed(self, v):
         if self._loading:
             return
@@ -214,14 +319,15 @@ class ClipInspector(QFrame):
     def _emit_volume(self, v):
         if self._loading:
             return
+        self.lbl_vol_value.setText(f"{v}%")
         self.volume_changed.emit(int(v))
     def set_export_status(self, text, pct=None):
         self.lbl_status.setText(text)
         if pct is not None:
             self.progress.setValue(int(pct))
 
-class AdvancedEditor(QMainWindow):
-    def __init__(self):
+class AdvancedEditor(QMainWindow, PhaseOverlayMixin):
+    def __init__(self, initial_file=None):
         super().__init__()
         self.base_dir = parent_dir
         self.logger = setup_logger()
@@ -232,7 +338,7 @@ class AdvancedEditor(QMainWindow):
         self.export_thread = None
         self.setWindowTitle("Advanced Video Editor - Semi Pro")
         self.resize(1600, 900)
-        self.setStyleSheet("QMainWindow { background-color: #2c3e50; } QPushButton { background-color: #34495e; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #4e6d8d; } QPushButton:disabled { background-color: #2c3e50; color: #7f8c8d; }")
+        self.setStyleSheet("QMainWindow { background-color: #34495e; } QPushButton { background-color: #34495e; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; } QPushButton:hover { background-color: #4e6d8d; } QPushButton:disabled { background-color: #2c3e50; color: #7f8c8d; }")
         self.setFocusPolicy(Qt.StrongFocus)
         central = QWidget()
         self.setCentralWidget(central)
@@ -243,48 +349,77 @@ class AdvancedEditor(QMainWindow):
         self.action_bar.setStyleSheet("background-color: #1a252f; border-bottom: 2px solid #000;")
         self.action_bar.setFixedHeight(60)
         ab_layout = QHBoxLayout(self.action_bar)
-        self.btn_speed_down = self.create_action_btn("<< Slow", self.change_speed_down)
-        self.btn_speed_up = self.create_action_btn("Fast >>", self.change_speed_up)
-        self.btn_vol_down = self.create_action_btn("Vol -", self.change_vol_down)
-        self.btn_vol_up = self.create_action_btn("Vol +", self.change_vol_up)
-        self.btn_layer_up = self.create_action_btn("▲ Move Up", self.move_layer_up)
-        self.btn_layer_down = self.create_action_btn("▼ Move Down", self.move_layer_down)
-        self.btn_split = self.create_action_btn("✁ Split", self.split_clip)
-        self.btn_split.setStyleSheet("background-color: #e67e22;")
-        self.btn_process = self.create_action_btn("Process Video", self.process_video)
-        self.btn_process.setStyleSheet("background-color: #2980b9;")
+        self.btn_process = QPushButton("Process Video")
+        self.btn_process.setCursor(QCursor(Qt.PointingHandCursor))
+        self.btn_process.setStyleSheet("""
+            QPushButton {
+                background-color: #2ab22a;
+                color: black;
+                font-weight: bold;
+                font-size: 16px;
+                border-radius: 15px;
+                margin-bottom: 6px;
+            }
+            QPushButton:hover { background-color: #c8f7c5; }
+        """)
+        self.btn_process.clicked.connect(self.process_video)
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setCursor(QCursor(Qt.PointingHandCursor))
+        self.cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color: #c0392b;
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                border-radius: 15px;
+                margin-bottom: 6px;
+            }
+            QPushButton:hover { background-color: #e74c3c; }
+        """)
+        self.cancel_button.clicked.connect(self.stop_export)
+        self.cancel_button.hide()
         self.btn_delete = self.create_action_btn("✖ Delete", self.delete_clip)
-        self.btn_delete.setStyleSheet("background-color: #c0392b;")
         self.btn_undo = self.create_action_btn("⟲ Undo", self.undo_action)
-        self.btn_undo.setStyleSheet("background-color: #8e44ad;")
-        ab_layout.addWidget(QLabel("  Track Actions:  "))
-        ab_layout.addWidget(self.btn_speed_down)
-        ab_layout.addWidget(self.btn_speed_up)
-        ab_layout.addSpacing(20)
-        ab_layout.addWidget(self.btn_vol_down)
-        ab_layout.addWidget(self.btn_vol_up)
-        ab_layout.addSpacing(20)
-        ab_layout.addWidget(self.btn_layer_up)
-        ab_layout.addWidget(self.btn_layer_down)
-        ab_layout.addSpacing(20)
-        ab_layout.addWidget(self.btn_split)
-        ab_layout.addSpacing(20)
-        ab_layout.addWidget(self.btn_process)
+        self.btn_upload = QPushButton("📂  Upload File  📂")
+        self.btn_upload.setCursor(QCursor(Qt.PointingHandCursor))
+        self.btn_upload.setStyleSheet("""
+            QPushButton {
+                background-color: #266b89;
+                color: #ffffff;
+                border: none;
+                padding: 10px 18px;
+                border-radius: 8px;
+                font-weight: bold;
+                margin-bottom: 6px;
+            }
+            QPushButton:hover { background-color: #2980b9; }
+        """)
+        self.btn_upload.clicked.connect(self.upload_file)
+        ab_layout.addWidget(self.btn_upload)
         ab_layout.addStretch()
+        ab_layout.addWidget(self.btn_process)
+        ab_layout.addWidget(self.cancel_button)
         ab_layout.addWidget(self.btn_undo)
         ab_layout.addWidget(self.btn_delete)
         ab_layout.addSpacing(10)
         layout.addWidget(self.action_bar)
-        self.update_action_bar()
         self.player = Player(self.base_dir, self)
         self.inspector = ClipInspector(self)
         self.inspector.speed_changed.connect(self.set_selected_speed)
         self.inspector.volume_changed.connect(self.set_selected_volume)
+        self.inspector.layer_up.connect(self.move_layer_up)
+        self.inspector.layer_down.connect(self.move_layer_down)
+        self.inspector.split_clip.connect(self.split_clip)
+        self.inspector.mute_toggled.connect(self.toggle_mute)
+        self.inspector.solo_toggled.connect(self.toggle_solo)
+        self.inspector.lock_toggled.connect(self.toggle_lock)
+        self.update_action_bar()
+        self.video_frame = self.player.video_frame
         preview_frame = QFrame()
         preview_layout = QHBoxLayout(preview_frame)
         preview_layout.setContentsMargins(0,0,0,0)
         preview_layout.setSpacing(0)
-        preview_layout.addWidget(self.player.video_frame, 1)
+        preview_layout.addWidget(self.video_frame, 1)
         preview_layout.addWidget(self.inspector, 0)
         layout.addWidget(preview_frame, 1)
         ctrl_frame = QFrame()
@@ -302,6 +437,7 @@ class AdvancedEditor(QMainWindow):
         self.timeline.seek_requested.connect(self.seek_timeline)
         self.timeline.clip_selected_on_timeline.connect(self.on_clip_selected)
         self.timeline.pre_modification.connect(self.save_state_from_timeline)
+        self.timeline.clip_remove_requested.connect(self.on_clip_remove_requested)
         layout.addWidget(self.timeline)
         self.timer = QTimer()
         self.timer.setInterval(50)
@@ -309,18 +445,71 @@ class AdvancedEditor(QMainWindow):
         self.current_playing_clip = None
         self.undo_shortcut = QShortcut(QKeySequence("Ctrl+Z"), self)
         self.undo_shortcut.activated.connect(self.undo_action)
+        self._ensure_overlay_widgets()
         self.logger.info("Application started.")
+        if initial_file:
+            self.load_initial_file(initial_file)
+
+    def stop_export(self):
+        if self.export_worker:
+            self.export_worker.stop()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._resize_overlay()
+
+    def on_clip_remove_requested(self, clip):
+        self.selected_clip = clip
+        self.delete_clip()
+
+    def load_initial_file(self, file_path):
+        if not self.input_file_path:
+            QMessageBox.warning(self, "No Video Loaded", "Please load a video file before opening the advanced editor.")
+            return
+        if not os.path.exists(file_path):
+            self.logger.error(f"Initial file not found: {file_path}")
+            return
+        duration = self.timeline.layers[0].run_probe_sync(file_path)
+        if duration <= 0:
+            self.logger.error(f"Could not get duration for {file_path}")
+            return
+        target_layer = self.timeline.layers[0]
+        target_layer.add_clip(file_path, duration)
+        self.logger.info(f"Loaded initial file {file_path} to layer 0")
+
+    def upload_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open Media File", os.path.expanduser("~"), "Media Files (*.mp4 *.mov *.mkv *.avi *.mp3 *.wav)")
+        if not file_path:
+            return
+        duration = self.timeline.layers[0].run_probe_sync(file_path)
+        if duration <= 0:
+            self.logger.error(f"Could not get duration for {file_path}")
+            return
+        target_layer = None
+        for layer in self.timeline.layers:
+            if not layer.clips:
+                target_layer = layer
+                break
+        if target_layer is None:
+            target_layer = self.timeline.add_layer()
+        target_layer.add_clip(file_path, duration)
+        self.logger.info(f"Uploaded {file_path} to layer {target_layer.layer_number}")
+
     def keyPressEvent(self, event: QKeyEvent):
-        if event.key() == Qt.Key_Left:
-            current_pos = self.timeline.ruler.playhead_pos_px / self.timeline.PIXELS_PER_SECOND
-            new_pos = max(0.0, current_pos - 1.0)
-            self.seek_timeline(new_pos)
-            self.logger.info(f"Seek Back: {new_pos:.2f}s")
-        elif event.key() == Qt.Key_Right:
-            current_pos = self.timeline.ruler.playhead_pos_px / self.timeline.PIXELS_PER_SECOND
-            new_pos = current_pos + 1.0
-            self.seek_timeline(new_pos)
-            self.logger.info(f"Seek Fwd: {new_pos:.2f}s")
+        if event.key() == Qt.Key_Left or event.key() == Qt.Key_Right:
+            modifiers = event.modifiers()
+            if modifiers == Qt.ShiftModifier:
+                seek_ms = 3000
+            elif modifiers == Qt.ControlModifier:
+                seek_ms = 100
+            else:
+                seek_ms = 1000
+            if event.key() == Qt.Key_Left:
+                seek_ms = -seek_ms
+            current_pos_sec = self.timeline.ruler.playhead_pos_px / self.timeline.PIXELS_PER_SECOND
+            new_pos_sec = max(0.0, current_pos_sec + (seek_ms / 1000.0))
+            self.seek_timeline(new_pos_sec)
+            self.logger.info(f"Seek {'Fwd' if seek_ms > 0 else 'Back'}: {new_pos_sec:.2f}s")
         elif event.key() == Qt.Key_Delete:
             if self.selected_clip:
                 self.delete_clip()
@@ -328,32 +517,41 @@ class AdvancedEditor(QMainWindow):
             self.toggle_playback()
         else:
             super().keyPressEvent(event)
+
     def create_action_btn(self, text, slot):
         btn = QPushButton(text)
         btn.clicked.connect(slot)
         return btn
+
     def on_clip_selected(self, clip):
         self.selected_clip = clip
-        self.inspector.set_clip(clip)
+        layer = self.timeline.get_layer_of_clip(clip)
+        self.inspector.set_clip(clip, layer)
         self.update_action_bar()
+
     def update_action_bar(self):
         enabled = self.selected_clip is not None
-        for btn in [self.btn_speed_down,self.btn_speed_up,self.btn_vol_down,self.btn_vol_up,self.btn_layer_up,self.btn_layer_down,self.btn_split,self.btn_delete]:
-            btn.setEnabled(enabled)
+        self.inspector.btn_layer_up.setEnabled(enabled)
+        self.inspector.btn_layer_down.setEnabled(enabled)
+        self.inspector.btn_split.setEnabled(enabled)
         if enabled:
             layer = self.timeline.get_layer_of_clip(self.selected_clip)
             if layer:
-                self.btn_layer_up.setEnabled(layer.layer_number > 0)
-                self.btn_layer_down.setEnabled(layer.layer_number < len(self.timeline.layers) - 1)
+                self.inspector.btn_layer_up.setEnabled(layer.layer_number > 0)
+                self.inspector.btn_layer_down.setEnabled(layer.layer_number < len(self.timeline.layers) - 1)
         self.btn_undo.setEnabled(len(self.undo_stack) > 0)
+        self.btn_delete.setEnabled(enabled)
+
     def save_state(self):
         state = self.timeline.get_state()
         self.undo_stack.append(state)
         if len(self.undo_stack) > 50:
             self.undo_stack.pop(0)
         self.update_action_bar()
+
     def save_state_from_timeline(self):
         self.save_state()
+
     def undo_action(self):
         if self.undo_stack:
             state = self.undo_stack.pop()
@@ -364,52 +562,40 @@ class AdvancedEditor(QMainWindow):
             self.inspector.set_clip(None)
             self.update_action_bar()
             self.logger.info("Undo performed")
+
     def set_selected_speed(self, speed):
         if self.selected_clip:
             self.save_state()
             self.selected_clip.speed = float(speed)
+            self.selected_clip.duration = self.selected_clip.original_duration / self.selected_clip.speed
             self.logger.info(f"Speed set to {self.selected_clip.speed}x for clip {self.selected_clip.uid}")
+            layer = self.timeline.get_layer_of_clip(self.selected_clip)
+            if layer:
+                sorted_clips = sorted(layer.clips, key=lambda c: c.start_time)
+                layer.clips = sorted_clips
+                last_end_time = 0.0
+                for clip in layer.clips:
+                    clip.start_time = last_end_time
+                    last_end_time += clip.duration
+                layer.update()
+                self.timeline.update_dimensions()
             self.refresh_layer()
+
     def set_selected_volume(self, volume):
         if self.selected_clip:
             self.save_state()
             self.selected_clip.volume = int(volume)
             self.logger.info(f"Volume set to {self.selected_clip.volume} for clip {self.selected_clip.uid}")
             self.refresh_layer()
-    def change_speed_up(self):
-        if self.selected_clip:
-            self.save_state()
-            self.selected_clip.speed = min(4.0, self.selected_clip.speed + 0.25)
-            self.inspector.set_clip(self.selected_clip)
-            self.logger.info(f"Speed increased to {self.selected_clip.speed}x for clip {self.selected_clip.uid}")
-            self.refresh_layer()
-    def change_speed_down(self):
-        if self.selected_clip:
-            self.save_state()
-            self.selected_clip.speed = max(0.25, self.selected_clip.speed - 0.25)
-            self.inspector.set_clip(self.selected_clip)
-            self.logger.info(f"Speed decreased to {self.selected_clip.speed}x for clip {self.selected_clip.uid}")
-            self.refresh_layer()
-    def change_vol_up(self):
-        if self.selected_clip:
-            self.save_state()
-            self.selected_clip.volume = min(200, self.selected_clip.volume + 10)
-            self.inspector.set_clip(self.selected_clip)
-            self.logger.info(f"Volume increased to {self.selected_clip.volume} for clip {self.selected_clip.uid}")
-            self.refresh_layer()
-    def change_vol_down(self):
-        if self.selected_clip:
-            self.save_state()
-            self.selected_clip.volume = max(0, self.selected_clip.volume - 10)
-            self.inspector.set_clip(self.selected_clip)
-            self.logger.info(f"Volume decreased to {self.selected_clip.volume} for clip {self.selected_clip.uid}")
-            self.refresh_layer()
+
     def move_layer_up(self):
         self.save_state()
         self._move_layer(-1)
+
     def move_layer_down(self):
         self.save_state()
         self._move_layer(1)
+
     def _move_layer(self, offset):
         if not self.selected_clip:
             return
@@ -427,6 +613,7 @@ class AdvancedEditor(QMainWindow):
             target_layer.update()
             self.update_action_bar()
             self.logger.info(f"Moved clip from layer {current_layer.layer_number} to {target_layer.layer_number}")
+
     def delete_clip(self):
         if not self.selected_clip:
             return
@@ -435,11 +622,18 @@ class AdvancedEditor(QMainWindow):
         if layer:
             self.logger.info(f"Deleted clip {self.selected_clip.uid} from layer {layer.layer_number}")
             layer.clips.remove(self.selected_clip)
+            sorted_clips = sorted(layer.clips, key=lambda c: c.start_time)
+            layer.clips = sorted_clips
+            last_end_time = 0.0
+            for clip in layer.clips:
+                clip.start_time = last_end_time
+                last_end_time += clip.duration
             layer.selected_clip = None
             self.selected_clip = None
             self.inspector.set_clip(None)
             layer.update()
             self.update_action_bar()
+
     def split_clip(self):
         if not self.selected_clip:
             return
@@ -459,6 +653,7 @@ class AdvancedEditor(QMainWindow):
         layer.clips.append(new_clip)
         layer.update()
         self.logger.info(f"Split clip {clip.uid} at offset {split_offset}")
+
     def refresh_layer(self):
         if self.selected_clip:
             layer = self.timeline.get_layer_of_clip(self.selected_clip)
@@ -467,6 +662,7 @@ class AdvancedEditor(QMainWindow):
             if self.player.is_playing() and self.current_playing_clip == self.selected_clip:
                 self.player.set_rate(self.selected_clip.speed)
                 self.player.set_volume(self.selected_clip.volume)
+
     def toggle_playback(self):
         if self.player.is_playing():
             self.player.pause()
@@ -479,9 +675,11 @@ class AdvancedEditor(QMainWindow):
             self.player.play()
             self.sync_playback()
             self.logger.info("Playback started")
+
     def seek_timeline(self, time_sec):
         self.timeline.update_playhead(time_sec)
         self.check_media_at_time(time_sec, force_seek=True)
+
     def sync_playback(self):
         if self.player.is_playing() and self.current_playing_clip:
             current_media_time = self.player.get_time() / 1000.0
@@ -490,9 +688,14 @@ class AdvancedEditor(QMainWindow):
             self.timeline.update_playhead(timeline_time)
         current_playhead = self.timeline.ruler.playhead_pos_px / self.timeline.PIXELS_PER_SECOND
         self.check_media_at_time(current_playhead)
+
     def check_media_at_time(self, time_sec, force_seek=False):
         found_clip = None
-        for layer in self.timeline.layers:
+        solo_layers = [l for l in self.timeline.layers if l.is_solo]
+        search_layers = solo_layers if solo_layers else self.timeline.layers
+        for layer in search_layers:
+            if layer.is_muted:
+                continue
             for clip in layer.clips:
                 if clip.start_time <= time_sec < clip.start_time + clip.duration:
                     found_clip = clip
@@ -513,6 +716,7 @@ class AdvancedEditor(QMainWindow):
             else:
                 self.current_playing_clip = None
                 self.player.stop()
+
     def process_video(self):
         if self.export_thread and self.export_thread.is_alive():
             return
@@ -522,26 +726,55 @@ class AdvancedEditor(QMainWindow):
         if not out_path.lower().endswith('.mp4'):
             out_path += '.mp4'
         state = self.timeline.get_state()
+        self.cancel_button.show()
+        self._show_processing_overlay()
         self.export_worker = ExportWorker(self.base_dir, state, out_path)
         self.export_worker.progress.connect(self.on_export_progress)
+        self.export_worker.progress.connect(lambda _, text: self._append_live_log(text))
         self.export_worker.finished.connect(self.on_export_finished)
         self.export_worker.error.connect(self.on_export_error)
         self.inspector.set_export_status("Starting export", 0)
         self.export_thread = threading.Thread(target=self.export_worker.run, daemon=True)
         self.export_thread.start()
         self.logger.info(f"Export started: {out_path}")
+
     def on_export_progress(self, pct, text):
         self.inspector.set_export_status(text, pct)
+
     def on_export_finished(self, out_path):
+        self.cancel_button.hide()
+        self._hide_processing_overlay()
         self.inspector.set_export_status(f"Export complete: {os.path.basename(out_path)}", 100)
         self.logger.info(f"Export finished: {out_path}")
+
     def on_export_error(self, msg):
+        self.cancel_button.hide()
+        self._hide_processing_overlay()
         self.inspector.set_export_status(f"Export error: {msg}", 0)
         self.logger.info(f"Export error: {msg}")
 
+    def toggle_mute(self, checked):
+        if self.selected_clip:
+            layer = self.timeline.get_layer_of_clip(self.selected_clip)
+            if layer:
+                self.timeline.set_layer_muted(layer, checked)
+
+    def toggle_solo(self, checked):
+        if self.selected_clip:
+            layer = self.timeline.get_layer_of_clip(self.selected_clip)
+            if layer:
+                self.timeline.set_layer_solo(layer, checked)
+
+    def toggle_lock(self, checked):
+        if self.selected_clip:
+            layer = self.timeline.get_layer_of_clip(self.selected_clip)
+            if layer:
+                self.timeline.set_layer_locked(layer, checked)
+
 def main():
     app = QApplication(sys.argv)
-    editor = AdvancedEditor()
+    initial_file = sys.argv[1] if len(sys.argv) > 1 else None
+    editor = AdvancedEditor(initial_file=initial_file)
     editor.show()
     sys.exit(app.exec_())
 if __name__ == '__main__':

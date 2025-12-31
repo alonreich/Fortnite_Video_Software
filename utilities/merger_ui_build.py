@@ -23,7 +23,7 @@ class MergerUIBuildMixin(MergerUIWidgetsMixin):
         list_container.setStretch(0, 1)
         list_container.setStretch(1, 0)
         outer.addWidget(self.create_bottom_band())
-        self.parent.status_label = QLabel("Ready. Add 2 to 10 videos to begin.")
+        self.parent.status_label = QLabel("Ready. Add 2 to 20 videos to begin.")
         self.parent.status_label.setStyleSheet("color: #7289da; font-weight: bold;")
         outer.addWidget(self.parent.status_label)
         outer.addWidget(self.create_merge_row())

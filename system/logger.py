@@ -12,7 +12,7 @@ def setup_logger(base_dir, name="Main_App"):
     if not _handler_configured:
         log_dir = os.path.join(base_dir, "logs")
         os.makedirs(log_dir, exist_ok=True)
-        log_path = os.path.join(log_dir, "Fortnite-Video-Converter.log")
+        log_path = os.path.join(log_dir, "Fortnite_Video_Compressor_App.log")
         handler = RotatingFileHandler(log_path, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8")
         fmt = logging.Formatter("%(asctime)s | %(name)-12s | %(levelname)-8s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
         handler.setFormatter(fmt)

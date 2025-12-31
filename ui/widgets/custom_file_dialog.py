@@ -1,4 +1,5 @@
 import subprocess
+import shutil
 import os
 from PyQt5.QtWidgets import (
     QFileDialog,
@@ -10,6 +11,12 @@ from PyQt5.QtWidgets import (
     QRubberBand,
     QAbstractItemView,
     QPushButton,
+    QMenu,
+    QMessageBox,
+    QProxyStyle,
+    QStyle,
+    QInputDialog,
+    QApplication,
 )
 from PyQt5.QtCore import (
     QByteArray,
@@ -36,7 +43,10 @@ class RubberBandHelper(QObject):
     def _configure_tree_view(self):
         self._tree.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._tree.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self._tree.setDragEnabled(False)
+        self._tree.setDragEnabled(True)
+        self._tree.setAcceptDrops(True)
+        self._tree.setDragDropMode(QAbstractItemView.DragDrop)
+        self._tree.setDropIndicatorShown(True)
 
     def _configure_viewport(self):
         self._vp.setMouseTracking(True)
@@ -140,6 +150,15 @@ class RubberBandHelper(QObject):
     def origin(self) -> QPoint:
         return self._origin
 
+class CenterHeaderProxyStyle(QProxyStyle):
+    """
+    Forces the header text to be centered, overriding the model's preference.
+    """
+    def drawControl(self, element, option, painter, widget=None):
+        if element == QStyle.CE_HeaderLabel:
+            option.textAlignment = Qt.AlignCenter
+        super().drawControl(element, option, painter, widget)
+
 class CenterAlignedTreeView(QTreeView):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -168,8 +187,10 @@ class CustomFileDialog(QFileDialog):
     def __init__(self, *args, config=None, **kwargs):
         super(CustomFileDialog, self).__init__(*args, **kwargs)
         self.config = config
+        self.setObjectName("CustomFileDialog")
         self._rb_helper = None
         self.tree_view = None
+        self._header_style = None
         self._init_dialog_flags()
         self._init_modes()
         self._init_title()
@@ -191,33 +212,32 @@ class CustomFileDialog(QFileDialog):
     def _apply_styles(self):
         self.setStyleSheet(
             """
-            QFileDialog {
+            QFileDialog#CustomFileDialog {
                 background-color: #212f3d;
                 color: #ecf0f1;
             }
-            QDialog QWidget {
+            QFileDialog#CustomFileDialog QWidget {
                 background-color: #212f3d;
                 color: #ecf0f1;
             }
-            QDialog QLabel {
+            QFileDialog#CustomFileDialog QLabel {
                 color: #ecf0f1;
             }
-            QHeaderView::section {
+            QFileDialog#CustomFileDialog QHeaderView::section {
                 background-color: #2a3c4d;
                 color: #ecf0f1;
                 padding: 4px;
                 border: 1px solid #1f2a36;
-                text-align: center;
             }
-            QTreeView {
+            QFileDialog#CustomFileDialog QTreeView {
                 background-color: #2a3c4d;
                 border: 1px solid #1f2a36;
             }
-            QListView {
+            QFileDialog#CustomFileDialog QListView {
                 background-color: #2a3c4d;
                 border: 1px solid #1f2a36;
             }
-            QPushButton {
+            QFileDialog#CustomFileDialog QPushButton {
                 background-color: #4fa3e3;
                 color: #ffffff;
                 border: 2px solid #1b4f72;
@@ -225,58 +245,80 @@ class CustomFileDialog(QFileDialog):
                 border-radius: 8px;
                 font-weight: bold;
             }
-            QPushButton:hover {
+            QFileDialog#CustomFileDialog QPushButton:hover {
                 background-color: #6bb8f0;
                 border: 2px solid #ecf0f1;
             }
-            QPushButton#openButton {
+            QFileDialog#CustomFileDialog QPushButton#openButton {
                 background-color: #336b70;
                 border: 2px solid #1b4f72;
             }
-            QPushButton#openButton:hover {
+            QFileDialog#CustomFileDialog QPushButton#openButton:hover {
                 background-color: #6aa1c5;
                 border: 2px solid #ecf0f1;
             }
-            QPushButton#cancelButton {
+            QFileDialog#CustomFileDialog QPushButton#cancelButton {
                 background-color: #336b70;
                 border: 2px solid #1b4f72;
             }
-            QPushButton#cancelButton:hover {
+            QFileDialog#CustomFileDialog QPushButton#cancelButton:hover {
                 background-color: #6aa1c5;
                 border: 2px solid #ecf0f1;
             }
-            QRubberBand {
+            QFileDialog#CustomFileDialog QRubberBand {
                 border: 1px solid #5dade2;
                 background-color: transparent;
             }
-            QTreeView::item:selected, QListView::item:selected {
+            QFileDialog#CustomFileDialog QTreeView::item:selected,
+            QFileDialog#CustomFileDialog QListView::item:selected {
                 background-color: #2a5949;
                 color: #ffffff;
                 border: 1px solid #143d5c;
             }
-            QTreeView::item:hover, QListView::item:hover {
+            QFileDialog#CustomFileDialog QTreeView::item:hover,
+            QFileDialog#CustomFileDialog QListView::item:hover {
                 background-color: #2c3e50;
                 border: 1px solid #5dade2;
             }
-            QLineEdit {
+            QFileDialog#CustomFileDialog QLineEdit {
                 background-color: #34495e;
                 border: 1px solid #2980b9;
                 border-radius: 5px;
                 padding: 5px;
                 color: #ecf0f1;
             }
-            QComboBox {
+            QFileDialog#CustomFileDialog QComboBox {
                 background-color: #34495e;
                 border: 1px solid #2980b9;
                 border-radius: 5px;
                 padding: 5px;
                 color: #ecf0f1;
             }
-            QComboBox QAbstractItemView {
+            QFileDialog#CustomFileDialog QComboBox QAbstractItemView {
                 background-color: #34495e;
                 color: #ecf0f1;
             }
-            QLabel#backButton, QLabel#forwardButton, QLabel#parentDirButton, QLabel#newFolderButton {
+            QFileDialog#CustomFileDialog QMenu {
+                background-color: #212f3d;
+                color: #ecf0f1;
+                border: 1px solid #5dade2;
+            }
+            QFileDialog#CustomFileDialog QMenu::item {
+                padding: 10px 25px;
+                margin: 2px 0px;
+            }
+            QFileDialog#CustomFileDialog QMenu::item:selected {
+                background-color: #2a5949;
+            }
+            QFileDialog#CustomFileDialog QMenu::separator {
+                height: 2px;
+                background: #5dade2;
+                margin: 2px 0px;
+            }
+            QFileDialog#CustomFileDialog QLabel#backButton,
+            QFileDialog#CustomFileDialog QLabel#forwardButton,
+            QFileDialog#CustomFileDialog QLabel#parentDirButton,
+            QFileDialog#CustomFileDialog QLabel#newFolderButton {
                 min-width: 50px;
             }
             """
@@ -284,18 +326,191 @@ class CustomFileDialog(QFileDialog):
 
     def _bind_tree_view(self):
         self.tree_view = self.findChild(QTreeView)
-        if not self.tree_view:
+        if self.tree_view:
+            header = self.tree_view.header()
+            self.restore_state(header)
+            self.tree_view.setUniformRowHeights(True)
+            try:
+                self.tree_view.setAllColumnsShowFocus(True)
+            except Exception:
+                pass
+            self.tree_view.setItemDelegate(_CenteredTextDelegate(self.tree_view))
+            self._header_style = CenterHeaderProxyStyle(header.style())
+            header.setStyle(self._header_style)
+            header.setDefaultAlignment(Qt.AlignCenter)
+            if self.tree_view.model():
+                try:
+                    self.tree_view.model().setReadOnly(False)
+                except Exception:
+                    pass
+            self._rb_helper = RubberBandHelper(self.tree_view)
+        self.list_view = self.findChild(QListView, "listView")
+        self._install_silent_delete(self.tree_view)
+        self._install_silent_delete(self.list_view)
+
+    def _install_silent_delete(self, view):
+        """Make Delete and context-menu Delete delete with no prompts."""
+        if view is None:
             return
-        header = self.tree_view.header()
-        self.restore_state(header)
-        self.tree_view.setUniformRowHeights(True)
+        view.installEventFilter(self)
+        view.viewport().installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.ContextMenu:
+            view = obj
+            if not isinstance(obj, (QTreeView, QListView)):
+                view = obj.parent()
+            self._show_delete_menu(view, event.globalPos())
+            return True
+        if event.type() in (QEvent.KeyPress, QEvent.ShortcutOverride):
+            if hasattr(event, 'key') and event.key() == Qt.Key_Delete:
+                if event.type() == QEvent.ShortcutOverride:
+                    event.accept()
+                    return True
+                self._delete_selected_files_silent()
+                return True
+        return super().eventFilter(obj, event)
+
+    def _show_delete_menu(self, view, global_pos):
+        paths = self._selected_paths_from_view(view)
+        menu = QMenu(view)
+        act_play = None
+        act_rename = None
+        act_new_folder = None
+        act_delete = None
+        if paths:
+            act_play = menu.addAction("▶   Preview Play the Video   ▶")
+            menu.addSeparator()
+        if len(paths) == 1:
+            act_rename = menu.addAction("          Rename the File")
+            menu.addSeparator()
+        act_new_folder = menu.addAction("📂   Create a New Folder   📂")
+        if paths:
+            menu.addSeparator()
+            act_delete = menu.addAction("        ⛔   Delete File   ⛔")
+        chosen = menu.exec_(global_pos)
+        if chosen == act_new_folder:
+            self._create_new_folder()
+        elif paths and chosen == act_play:
+            self._play_video(paths)
+        elif paths and chosen == act_delete:
+            self._delete_selected_files_silent()
+        elif paths and len(paths) == 1 and chosen == act_rename:
+            self._rename_file(paths[0])
+
+    def _create_new_folder(self):
+        current_dir = self.directory().absolutePath()
+        name, ok = QInputDialog.getText(self, "New Folder", "Folder Name:")
+        if ok and name:
+            new_path = os.path.join(current_dir, name)
+            try:
+                os.mkdir(new_path)
+                self.setDirectory(current_dir)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Could not create folder: {e}")
+
+    def _rename_file(self, old_path):
+        dirname = os.path.dirname(old_path)
+        basename = os.path.basename(old_path)
+        name, ok = QInputDialog.getText(self, "Rename File", "New Name:", text=basename)
+        if ok and name and name != basename:
+            new_path = os.path.join(dirname, name)
+            try:
+                os.rename(old_path, new_path)
+                self.setDirectory(dirname)
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Could not rename file: {e}")
+
+    def _play_video(self, paths):
+        if not paths:
+            return
+        target = paths[0]
         try:
-            self.tree_view.setAllColumnsShowFocus(True)
+            if hasattr(os, 'startfile'):
+                os.startfile(target)
+            else:
+                import sys
+                opener = 'open' if sys.platform == 'darwin' else 'xdg-open'
+                subprocess.Popen([opener, target])
         except Exception:
             pass
-        self.tree_view.setItemDelegate(_CenteredTextDelegate(self.tree_view))
-        header.setDefaultAlignment(Qt.AlignCenter)
-        self._rb_helper = RubberBandHelper(self.tree_view)
+    
+    def _delete_selected_files_silent(self):
+        """
+        Delete selected file(s) or folder(s) with NO confirmation.
+        If a file cannot be deleted (locked/in use/permission), show a prompt.
+        """
+        view = None
+        if getattr(self, "tree_view", None) is not None and self.tree_view.hasFocus():
+            view = self.tree_view
+        elif getattr(self, "list_view", None) is not None and self.list_view.hasFocus():
+            view = self.list_view
+        else:
+            view = getattr(self, "tree_view", None) or getattr(self, "list_view", None)
+        paths = self._selected_paths_from_view(view)
+        if not paths:
+            return
+        try:
+            from send2trash import send2trash
+            use_trash = True
+        except Exception:
+            send2trash = None
+            use_trash = False
+        failed = []
+        for p in paths:
+            try:
+                if not os.path.exists(p):
+                    continue
+                if use_trash and send2trash:
+                    send2trash(p)
+                else:
+                    if os.path.isfile(p):
+                        os.remove(p)
+                    elif os.path.isdir(p):
+                        shutil.rmtree(p)
+            except Exception as e:
+                failed.append((p, str(e)))
+        try:
+            self.setDirectory(self.directory())
+        except Exception:
+            pass
+        if failed:
+            msg = "Some items could not be deleted (they may be open in another program):\n\n"
+            msg += "\n".join([f"- {p}\n  {err}" for p, err in failed[:8]])
+            if len(failed) > 8:
+                msg += f"\n\n(and {len(failed) - 8} more...)"
+            QMessageBox.warning(self, "Delete failed", msg)
+
+    def _selected_paths_from_view(self, view):
+        """
+        Get currently selected paths directly from the view's model/selection,
+        because QFileDialog.selectedFiles() is often empty until accept().
+        Works for both QTreeView and QListView.
+        """
+        if view is None:
+            return []
+        sm = view.selectionModel()
+        model = view.model()
+        if sm is None or model is None:
+            return []
+        indexes = sm.selectedRows(0)
+        if not indexes:
+            indexes = sm.selectedIndexes()
+        paths = []
+        for idx in indexes:
+            try:
+                p = model.filePath(idx)
+            except Exception:
+                p = None
+            if p:
+                paths.append(p)
+        seen = set()
+        out = []
+        for p in paths:
+            if p not in seen:
+                seen.add(p)
+                out.append(p)
+        return out
 
     def _setup_lookin_width(self):
         look_in_combobox = self.findChild(QComboBox, "lookInCombo")
@@ -319,45 +534,14 @@ class CustomFileDialog(QFileDialog):
         QTimer.singleShot(0, self._apply_button_ids_and_restyle)
 
     def _apply_button_ids_and_restyle(self):
-        open_btn = None
-        cancel_btn = None
         buttons = self.findChildren(QPushButton)
         for b in buttons:
             raw = (b.text() or "")
             txt = raw.replace("&", "").replace("...", "").strip().lower()
             if txt in ("open", "ok"):
                 b.setObjectName("openButton")
-                open_btn = b
             elif txt == "cancel":
                 b.setObjectName("cancelButton")
-                cancel_btn = b
-        self._apply_styles()
-        btn_qss = """
-        QPushButton {
-            background-color: #336b70;
-            color: #ffffff;
-            border: 2px solid #1b4f72;
-            padding: 10px 18px;
-            border-radius: 8px;
-            font-weight: bold;
-        }
-        QPushButton:hover {
-            background-color: #6aa1c5;
-            border: 2px solid #ecf0f1;
-        }
-        QPushButton:default {
-            background-color: #336b70;
-            border: 2px solid #1b4f72;
-        }
-        QPushButton:default:hover {
-            background-color: #6aa1c5;
-            border: 2px solid #ecf0f1;
-        }
-        """
-        if open_btn is not None:
-            open_btn.setStyleSheet(btn_qss)
-        if cancel_btn is not None:
-            cancel_btn.setStyleSheet(btn_qss)
         self.update()
 
     def get_windows_quick_access(self):
@@ -435,8 +619,17 @@ class CustomFileDialog(QFileDialog):
     def selectedFiles(self):
         return super().selectedFiles()
 
-    def closeEvent(self, event):
+    def done(self, result):
+        """
+        Override done to ensure clean exit and prevent ghosting.
+        This handles OK, Cancel, and 'X' uniformly.
+        """
         self.save_state()
+        self.hide()
+        QApplication.processEvents()
+        super().done(result)
+
+    def closeEvent(self, event):
         super().closeEvent(event)
 
 from PyQt5.QtWidgets import QStyledItemDelegate

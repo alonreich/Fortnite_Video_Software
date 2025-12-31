@@ -14,7 +14,7 @@ from utilities.merger_window_logic import MergerWindowLogic
 from ui.widgets.draggable_list_widget import DraggableListWidget
 
 class VideoMergerWindow(QMainWindow):
-    MAX_FILES = 10
+    MAX_FILES = 20
     status_updated = pyqtSignal(str)
     return_to_main = pyqtSignal()
 

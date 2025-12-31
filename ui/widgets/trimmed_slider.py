@@ -1,5 +1,5 @@
 from PyQt5.QtCore import Qt, QRect, QPoint, pyqtSignal
-from PyQt5.QtGui import QPainter, QColor, QFont, QFontMetrics, QPen, QCursor, QPainterPath
+from PyQt5.QtGui import QPainter, QColor, QFont, QFontMetrics, QPen, QCursor, QPainterPath, QLinearGradient, QBrush
 from PyQt5.QtWidgets import QSlider, QStyleOptionSlider, QStyle, QToolTip, QApplication
 
 class TrimmedSlider(QSlider):
@@ -352,23 +352,59 @@ class TrimmedSlider(QSlider):
                         time_str = self._fmt(int(ms))
                         text_width = fm.horizontalAdvance(time_str)
                         p.drawText(x - text_width // 2, groove_rect.bottom() + 18, time_str)
-            for handle_type in ['start', 'end']:
-                handle_rect = self._get_handle_rect(handle_type)
-                if not handle_rect.isValid(): continue
-                color = QColor(0, 0, 0, 150)
-                if self._hovering_handle == handle_type or self._dragging_handle == handle_type:
-                    color = QColor(230, 126, 34, 200)
-                p.setPen(Qt.NoPen)
-                p.setBrush(color)
-                p.drawRoundedRect(handle_rect, 4, 4)
-            playhead_rect = self._get_playhead_rect()
-            if playhead_rect.isValid():
-                playhead_color = QColor("#59B1D5")
-                if self._hovering_handle == 'playhead' or self._dragging_handle == 'playhead':
-                    playhead_color = QColor(255, 170, 0, 255)
-                p.setPen(Qt.NoPen)
-                p.setBrush(playhead_color)
-                p.drawRoundedRect(playhead_rect, 4, 4)
+                    for handle_type in ['start', 'end']:
+                        handle_rect = self._get_handle_rect(handle_type)
+                        if not handle_rect.isValid(): continue
+                        color = QColor(0, 0, 0, 150)
+                        if self._hovering_handle == handle_type or self._dragging_handle == handle_type:
+                            color = QColor(230, 126, 34, 200)
+                        p.setPen(Qt.NoPen)
+                        p.setBrush(color)
+                        p.drawRoundedRect(handle_rect, 4, 4)
+                    playhead_rect = self._get_playhead_rect()
+                    if playhead_rect.isValid():
+                        knob_w = 18
+                        knob_h = 40
+                        cx = playhead_rect.center().x()
+                        cy = groove_rect.center().y()
+                        knob_rect = QRect(cx - knob_w // 2, cy - knob_h // 2, knob_w, knob_h)
+                        border_color = QColor("#1f2a36")
+                        if self._hovering_handle == 'playhead' or self._dragging_handle == 'playhead':
+                            border_color = QColor("#90A4AE")
+                        p.setPen(QPen(border_color, 1))
+                        g = QLinearGradient(knob_rect.left(), knob_rect.top(), knob_rect.left(), knob_rect.bottom())
+                        if self._hovering_handle == 'playhead' or self._dragging_handle == 'playhead':
+                            g.setColorAt(0.00, QColor("#546E7A"))
+                            g.setColorAt(0.40, QColor("#546E7A"))
+                            g.setColorAt(0.42, QColor("#90A4AE"))
+                            g.setColorAt(0.44, QColor("#90A4AE"))
+                            g.setColorAt(0.46, QColor("#546E7A"))
+                            g.setColorAt(0.48, QColor("#546E7A"))
+                            g.setColorAt(0.50, QColor("#90A4AE"))
+                            g.setColorAt(0.52, QColor("#90A4AE"))
+                            g.setColorAt(0.54, QColor("#546E7A"))
+                            g.setColorAt(0.56, QColor("#546E7A"))
+                            g.setColorAt(0.58, QColor("#90A4AE"))
+                            g.setColorAt(0.60, QColor("#90A4AE"))
+                            g.setColorAt(0.62, QColor("#546E7A"))
+                            g.setColorAt(1.00, QColor("#546E7A"))
+                        else:
+                            g.setColorAt(0.00, QColor("#546E7A"))
+                            g.setColorAt(0.40, QColor("#546E7A"))
+                            g.setColorAt(0.42, QColor("#90A4AE"))
+                            g.setColorAt(0.44, QColor("#90A4AE"))
+                            g.setColorAt(0.46, QColor("#546E7A"))
+                            g.setColorAt(0.48, QColor("#546E7A"))
+                            g.setColorAt(0.50, QColor("#90A4AE"))
+                            g.setColorAt(0.52, QColor("#90A4AE"))
+                            g.setColorAt(0.54, QColor("#546E7A"))
+                            g.setColorAt(0.56, QColor("#546E7A"))
+                            g.setColorAt(0.58, QColor("#90A4AE"))
+                            g.setColorAt(0.60, QColor("#90A4AE"))
+                            g.setColorAt(0.62, QColor("#546E7A"))
+                            g.setColorAt(1.00, QColor("#546E7A"))
+                        p.setBrush(QBrush(g))
+                        p.drawRoundedRect(knob_rect, 4, 4)
             if self._show_music:
                 for handle_type in ['start', 'end']:
                     handle_rect = self._get_music_handle_rect(handle_type)

@@ -134,7 +134,7 @@ class MusicMixin:
                 self.volume_shortcut_target = 'music'
                 self.logger.info("SHORTCUT: Volume keys now control MUSIC volume")
                 if self.music_volume_slider.value() < 10:
-                    self.music_volume_slider.setValue(80)
+                    self.music_volume_slider.setValue(20)
                 self.music_volume_slider.setEnabled(True)
             else:
                 self.music_volume_slider.setEnabled(False)
@@ -147,7 +147,7 @@ class MusicMixin:
                 self.positionSlider.reset_music_times()
                 return
             if self.music_volume_slider.value() in (0, 35):
-                self.music_volume_slider.setValue(80)
+                self.music_volume_slider.setValue(20)
             try:
                 p = self.music_combo.currentData()
                 if not p: return

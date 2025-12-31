@@ -742,7 +742,7 @@ class UiBuilderMixin:
         self.mobile_checkbox.toggled.connect(lambda _: QTimer.singleShot(0, self._recenter_process_controls))
         self.quality_slider.valueChanged.connect(lambda _: self._recenter_process_controls())
         self.speed_spinbox.valueChanged.connect(lambda _: self._recenter_process_controls())
-        left_layout.addSpacing(-10)
+        player_col.addSpacing(10)
         self.progress_bar = QProgressBar()
         self.progress_bar.setObjectName("mainProgressBar")
         self.progress_bar.setStyleSheet("""
@@ -760,7 +760,7 @@ class UiBuilderMixin:
             }
         """)
         self.progress_bar.setValue(0)
-        left_layout.addWidget(self.progress_bar)
+        player_col.addWidget(self.progress_bar)
         self.progress_update_signal.connect(self.on_progress)
         self.status_update_signal.connect(self.on_phase_update)
         self.process_finished_signal.connect(self.on_process_finished)
@@ -776,7 +776,11 @@ class UiBuilderMixin:
         self.right_panel = QWidget()
         right_col = QVBoxLayout(self.right_panel)
         self.right_panel.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        right_col.setContentsMargins(0, 0, 0, 33)
+        right_col.setContentsMargins(0, 0, 0, 0)
+        drop_slider_row = QHBoxLayout()
+        drop_slider_row.setContentsMargins(0, 0, 0, 0)
+        drop_slider_row.setSpacing(40)
+        drop_slider_row.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.drop_area = DropAreaFrame()
         self.drop_area.setObjectName("dropArea")
         self.drop_area.setFocusPolicy(Qt.NoFocus)
@@ -787,29 +791,16 @@ class UiBuilderMixin:
         self.drop_label.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 0px; margin-right: 0px; margin-bottom: 0px; margin-left: 0px; padding: 0px;")
         self.drop_label.setAlignment(Qt.AlignCenter)
         drop_layout.addWidget(self.drop_label)
-        self.drop_area.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        right_col.addWidget(self.drop_area, stretch=10)
-        self.upload_button = QPushButton("📂 Upload Video File 📂")
-        self.upload_button.clicked.connect(self.select_file)
-        self.upload_button.setFocusPolicy(Qt.NoFocus)
-        self.upload_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.upload_button.setMaximumWidth(150)
-        self.upload_button.setMaximumHeight(45)
-        self.upload_button.setMinimumHeight(45)
-        self.upload_button.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 8px; margin-right: 0px; margin-bottom: 0px; margin-left: 0px; padding: 5px;")
+        self.drop_area.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.drop_area.setFixedHeight(180)
+        self.drop_area.setFixedWidth(140)
         self.drop_area.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 10px; margin-right: 0px; margin-bottom: 0px; margin-left: 0px; padding: 5px;")
-        self.drop_area.setMinimumWidth(150)
-        self.drop_area.setMaximumWidth(150)
-        right_col.addWidget(self.upload_button, 0, Qt.AlignBottom)
-        self.add_music_checkbox = QCheckBox("Add Background Music")
-        self.add_music_checkbox.setToolTip("Toggle background MP3 mixing from the ./mp3 folder.")
-        self.add_music_checkbox.setChecked(False)
-        self.add_music_checkbox.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 20px; margin-right: 0px; margin-bottom: 20px; margin-left: 0px; padding: 0px;")
-        right_col.addWidget(self.add_music_checkbox)
-        self.music_combo = QComboBox()
-        self.music_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        self.music_combo.setVisible(False)
-        right_col.addWidget(self.music_combo)
+        drop_slider_row.addWidget(self.drop_area)
+        slider_vbox = QVBoxLayout()
+        slider_vbox.setContentsMargins(0, 0, 0, 0)
+        slider_vbox.setSpacing(0)
+        slider_vbox.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        self.slider_vbox_layout = slider_vbox 
         self.music_volume_slider = QSlider(Qt.Vertical, self)
         self.music_volume_slider.setObjectName("musicVolumeSlider")
         self.music_volume_slider.setRange(0, 100)
@@ -818,34 +809,96 @@ class UiBuilderMixin:
         self.music_volume_slider.setTickInterval(1)
         self.music_volume_slider.setTickPosition(QSlider.TicksBothSides)
         self.music_volume_slider.setTracking(True)
+        self.music_volume_slider.setInvertedAppearance(True)
         self.music_volume_slider.setVisible(True)
         self.music_volume_slider.setFocusPolicy(Qt.NoFocus)
         self.music_volume_slider.installEventFilter(self)
-        eff_default = 75
+        self.music_volume_slider.setFixedHeight(170)
+        eff_default = 80
         raw = self.music_volume_slider.maximum() + self.music_volume_slider.minimum() - eff_default
         _knob = self.positionSlider.palette().highlight().color().name()
         self.music_volume_slider.setStyleSheet(f"""
         QSlider#musicVolumeSlider::groove:vertical {{
-        border: 1px solid #4a4a4a;
-        background: qlineargradient(x1:0, y1:1, x2:0, y2:0,
-            stop:0   #e64c4c,
-            stop:0.25 #f7a8a8,
-            stop:0.50 #f2f2f2,
-            stop:0.75 #7bcf43,
-            stop:1   #009b00);
-        width: 16px;
-        border-radius: 6px;
+            border: 1px solid #1f2a36;
+            background: qlineargradient(x1:0, y1:1, x2:0, y2:0,
+                stop:0   #e64c4c,
+                stop:0.25 #f7a8a8,
+                stop:0.50 #f2f2f2,
+                stop:0.75 #7bcf43,
+                stop:1   #009b00);
+            width: 20px;
+            border-radius: 3px;
         }}
         QSlider#musicVolumeSlider::handle:vertical {{
-        background: {_knob};
-        border: 1px solid #5c5c5c;
-        width: 18px; height: 18px;
-        margin: -2px 0;
-        border-radius: 6px;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #455A64,
+                stop:0.40 #455A64,
+                stop:0.42 #90A4AE, stop:0.44 #90A4AE,
+                stop:0.46 #455A64,
+                stop:0.48 #455A64,
+                stop:0.50 #90A4AE, stop:0.52 #90A4AE,
+                stop:0.54 #455A64,
+                stop:0.56 #455A64,
+                stop:0.58 #90A4AE, stop:0.60 #90A4AE,
+                stop:0.62 #455A64, stop:1 #455A64);
+            border: 1px solid #1f2a36;
+            width: 22px; 
+            height: 40px; 
+            margin: 0 -2px;
+            border-radius: 4px;
+        }}
+        QSlider#musicVolumeSlider::handle:vertical:hover {{
+            border: 1px solid #90A4AE;
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 #546E7A,
+                stop:0.40 #546E7A, stop:0.42 #CFD8DC, stop:0.44 #CFD8DC,
+                stop:0.46 #546E7A, stop:0.48 #546E7A, stop:0.50 #CFD8DC, stop:0.52 #CFD8DC,
+                stop:0.54 #546E7A, stop:0.56 #546E7A, stop:0.58 #CFD8DC, stop:0.60 #CFD8DC,
+                stop:0.62 #546E7A, stop:1 #546E7A);
         }}
         QSlider#musicVolumeSlider::sub-page:vertical,
-        QSlider#musicVolumeSlider::add-page:vertical {{ background: transparent; }}
+        QSlider#musicVolumeSlider::add-page:vertical {{ background: transparent;
+        }}
         """)
+        self.music_volume_label = QLabel("80%")
+        self.music_volume_label.setAlignment(Qt.AlignHCenter)
+        self.music_volume_label.setVisible(False)
+        self.music_volume_label.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 20px; margin-right: 0px; margin-bottom: 10px; margin-left: 0px; padding: 0px;")
+        init_raw = int(self.music_volume_slider.value())
+        init_eff = self._music_eff(init_raw)
+        self.music_volume_label.setText(f"{init_eff}%")
+        self.music_volume_badge = QLabel("80%", self)
+        self.music_volume_badge.setObjectName("musicVolumeBadge")
+        self.music_volume_badge.setStyleSheet(
+            "color: white; background: rgba(0,0,0,160); padding: 2px 6px; "
+            "border-radius: 6px; font-weight: bold;"
+        )
+        self.music_volume_badge.hide()
+        slider_vbox.addWidget(self.music_volume_slider)
+        slider_vbox.addWidget(self.music_volume_label)
+        drop_slider_row.addLayout(slider_vbox)
+        right_col.addLayout(drop_slider_row)
+        self.upload_button = QPushButton("📂 Upload Video File 📂")
+        self.upload_button.clicked.connect(self.select_file)
+        #self.upload_button.setFocusPolicy(Qt.NoFocus)
+        self.upload_button.setFixedHeight(55)
+        self.upload_button.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 20px; margin-right: 0px; margin-bottom: 0px; margin-left: 0px; padding: 7px;")
+        right_col.addWidget(self.upload_button)
+        self.add_music_checkbox = QCheckBox("Add Background Music")
+        self.add_music_checkbox.setToolTip("Toggle background MP3 mixing from the ./mp3 folder.")
+        self.add_music_checkbox.setChecked(False)
+        self.add_music_checkbox.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 20px; margin-right: 0px; margin-bottom: 20px; margin-left: 0px; padding: 0px;")
+        right_col.addWidget(self.add_music_checkbox)
+        def _update_ui_positions(checked):
+             d_top = 0 if checked else 10
+             self.drop_area.setStyleSheet(f"font-size: 11px; font-weight: bold; margin-top: {d_top}px; margin-right: 0px; margin-bottom: 0px; margin-left: 0px; padding: 5px;")
+             s_top = 32 if checked else 32
+             self.slider_vbox_layout.setContentsMargins(0, s_top, 0, 0)
+        self.add_music_checkbox.toggled.connect(_update_ui_positions)
+        self.music_combo = QComboBox()
+        self.music_combo.setFixedWidth(250)
+        self.music_combo.setVisible(False)
+        right_col.addWidget(self.music_combo)
         self.music_offset_input = QDoubleSpinBox()
         self.music_offset_input.setPrefix("Music Start (s): ")
         self.music_offset_input.setDecimals(2)
@@ -854,27 +907,19 @@ class UiBuilderMixin:
         self.music_offset_input.setValue(0.0)
         self.music_offset_input.setVisible(False)
         right_col.addWidget(self.music_offset_input)
-        self.music_volume_label = QLabel("35%")
-        self.music_volume_label.setAlignment(Qt.AlignHCenter)
-        self.music_volume_label.setVisible(False)
-        self.music_volume_label.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 10px; margin-right: 0px; margin-bottom: 10px; margin-left: 0px; padding: 0px;")
-        init_raw = int(self.music_volume_slider.value())
-        init_eff = self._music_eff(init_raw)
-        self.music_volume_label.setText(f"{init_eff}%")
-        self.music_volume_badge = QLabel("35%", self)
-        self.music_volume_badge.setObjectName("musicVolumeBadge")
-        self.music_volume_badge.setStyleSheet(
-            "color: white; background: rgba(0,0,0,160); padding: 2px 6px; "
-            "border-radius: 6px; font-weight: bold;"
-        )
-        self.music_volume_badge.hide()
-        right_col.addWidget(self.music_volume_slider, alignment=Qt.AlignHCenter)
-        right_col.addWidget(self.music_volume_label, alignment=Qt.AlignHCenter)
         right_col.addStretch(1)
         bottom_box = QWidget(self.right_panel)
         bottom_box.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
         bb = QVBoxLayout(bottom_box)
-        bb.setSpacing(28)
+        bb.setSpacing(25)
+        self.adv_editor_btn = QPushButton("Advanced\n Video Editor")
+        self.adv_editor_btn.setStyleSheet(
+            "background-color: #bfa624; color: black; font-weight:600;"
+            "padding:6px 12px; border-radius:6px;"
+        )
+        self.adv_editor_btn.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.adv_editor_btn.clicked.connect(self.launch_advanced_editor)
+        bb.addWidget(self.adv_editor_btn, 0, Qt.AlignCenter)
         bb.addWidget(self.merge_btn, 0, Qt.AlignCenter)
         bb.addWidget(self.no_fade_checkbox, 0, Qt.AlignRight)
         right_col.addWidget(bottom_box, 0, Qt.AlignBottom | Qt.AlignRight)
@@ -890,6 +935,7 @@ class UiBuilderMixin:
         self._ensure_overlay_widgets()
         self._hide_processing_overlay()
         old_resize = getattr(self, "resizeEvent", None)
+        _update_ui_positions(self.add_music_checkbox.isChecked())
         def _resized(e):
             if callable(old_resize):
                 old_resize(e)

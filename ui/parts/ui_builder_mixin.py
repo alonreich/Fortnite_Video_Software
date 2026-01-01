@@ -880,7 +880,6 @@ class UiBuilderMixin:
         right_col.addLayout(drop_slider_row)
         self.upload_button = QPushButton("📂 Upload Video File 📂")
         self.upload_button.clicked.connect(self.select_file)
-        #self.upload_button.setFocusPolicy(Qt.NoFocus)
         self.upload_button.setFixedHeight(55)
         self.upload_button.setStyleSheet("font-size: 11px; font-weight: bold; margin-top: 20px; margin-right: 0px; margin-bottom: 0px; margin-left: 0px; padding: 7px;")
         right_col.addWidget(self.upload_button)

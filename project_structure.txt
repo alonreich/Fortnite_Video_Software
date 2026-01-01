@@ -24,17 +24,19 @@ Advanced Video Editor = A multi-track video editor for sequencing clips.
 ├── !!!_Ouput_Video_Files_!!!\: Default output directory for processed videos.
 │
 ├── advanced\: A separate, multi-track video editor application.
-│   ├── advanced_video_editor.py: Main entry point for the Advanced Video Editor.
-│   ├── timeline.py: Contains the UI and logic for the multi-layer timeline view.
-│   ├── player.py: Manages the video preview for the advanced editor.
-│   ├── project.py: Handles saving and loading of advanced editor project files.
-│   ├── config.py: Manages the configuration for the advanced editor.
-│   └── logger.py: Sets up the logger for the advanced editor.
-│
-├── bin\: Contains the Python interpreter and pip for the virtual environment.
-│   ├── pip.cmd
-│   ├── py.cmd
-│   └── python.cmd
+│   ├──main.py: Application entry point. Bootstraps UI and Logging.
+│   ├──core/system.py: centralized logging (stdout/stderr redirect), ConfigManager.
+│   ├──core/project.py: Project file management, asset copying/staging, autosave logic.
+│   ├──core/history.py: Undo/Redo stack handling with deep state serialization.
+│   ├──media/player.py: High-precision video player using python-mpv (replaces VLC).
+│   ├──media/exporter.py: FFmpeg rendering engine with HW acceleration failover (NVENC/AMF/QSV).
+│   ├──media/tools.py: Background workers for Waveform generation and Media Probing.
+│   ├──ui/main_window.py: The primary QMainWindow shell and layout orchestration.
+│   ├──ui/preview.py: Video preview widget with crop overlays and aspect ratio masking.
+│   ├──ui/timeline.py: The main timeline controller, ruler, and scroll logic.
+│   ├──ui/tracks.py: Visual handling of tracks/lanes and Z-index logic.
+│   ├──ui/clips.py: The draggable clip items, rubberband selection, and drawing logic.
+│   └──ui/inspector.py: Properties panel for selected clips (Speed, Volume, Effects).
 │
 ├── binaries\: Contains all the necessary binaries for the application to run.
 │   ├── ffmpeg.exe, ffplay.exe, ffprobe.exe: The FFmpeg suite for video manipulation.

@@ -26,7 +26,7 @@ def _get_logger():
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from system.logger import setup_logger as setup_main_logger
-    return setup_main_logger(project_root, name="Video_Merger")
+    return setup_main_logger(project_root, "Video_Merger.log", "Video_Merger")
 
 def _load_conf() -> dict:
     p = _conf_path()

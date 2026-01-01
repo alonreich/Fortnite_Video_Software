@@ -11,4 +11,4 @@ def setup_logger():
     Initializes the shared logger and returns a specific logger for the
     Crop Tool, ensuring its messages are identifiable.
     """
-    return setup_main_logger(project_root, name="Crop_Tools")
+    return setup_main_logger(project_root, "Crop_Tools.log", "Crop_Tools")

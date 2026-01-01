@@ -1,85 +1,60 @@
-import sys
-import os
-import vlc
+﻿import os
+import logging
 from PyQt5.QtWidgets import QFrame
-class Player:
-    def __init__(self, base_dir, parent=None):
-        vlc_args=['--no-xlib','--no-video-title-show','--no-plugins-cache','--file-caching=300','--verbose=-1']
-        if os.name=='nt':
-            os.environ['VLC_PLUGIN_PATH']=os.path.join(base_dir,"binaries","plugins")
-        self.vlc_instance=vlc.Instance(vlc_args)
-        self.video_player=self.vlc_instance.media_player_new()
-        self.audio_players={}
-        self.active_video=None
-        self.active_audio={}
-        self.video_frame=QFrame(parent)
-        self.video_frame.setStyleSheet("background-color: #000;")
-        if sys.platform.startswith('win'):
-            self.video_player.set_hwnd(self.video_frame.winId())
-        elif sys.platform.startswith('darwin'):
-            self.video_player.set_nsobject(int(self.video_frame.winId()))
-        else:
-            self.video_player.set_xwindow(self.video_frame.winId())
-    def ensure_audio_player(self, key):
-        if key not in self.audio_players:
-            p=self.vlc_instance.media_player_new()
-            self.audio_players[key]=p
-        return self.audio_players[key]
-    def set_media(self, file_path):
-        self.set_video_media(file_path)
-    def set_video_media(self, file_path):
-        self.active_video=file_path
-        media=self.vlc_instance.media_new(file_path) if file_path else None
-        self.video_player.set_media(media)
-    def set_audio_media(self, key, file_path):
-        self.active_audio[key]=file_path
-        p=self.ensure_audio_player(key)
-        media=self.vlc_instance.media_new(file_path) if file_path else None
-        p.set_media(media)
-    def play(self):
-        if self.active_video:
-            self.video_player.play()
-        for k,p in self.audio_players.items():
-            if self.active_audio.get(k):
-                p.play()
-    def pause(self):
-        self.video_player.pause()
-        for p in self.audio_players.values():
-            p.pause()
-    def stop(self):
-        self.video_player.stop()
-        for p in self.audio_players.values():
-            p.stop()
-    def seek(self, time_ms):
-        self.video_player.set_time(int(time_ms))
-    def seek_audio(self, key, time_ms):
-        p=self.ensure_audio_player(key)
-        p.set_time(int(time_ms))
+os.environ["PATH"] = os.path.dirname(os.path.abspath(__file__)) + os.pathsep + os.environ["PATH"]
+import mpv
+class MPVPlayer(QFrame):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.logger = logging.getLogger("ProEditor")
+        opts = {
+            "input_default_bindings": True,
+            "input_vo_keyboard": True,
+            "osc": True,
+            "keep_open": "yes",
+            "hr_seek": "yes",
+            "hwdec": "auto",
+            "vd_lavc_threads": 4
+        }
+        try:
+            self.mpv = mpv.MPV(wid=str(int(self.winId())), **opts)
+        except Exception as e:
+            self.logger.critical(f"MPV Init Failed: {e}")
+            raise
+
+    def load(self, path):
+        if not os.path.exists(path):
+            self.logger.error(f"File not found: {path}")
+            return
+        self.mpv.play(path)
+        self.mpv.pause = True
+
+    def play(self): self.mpv.pause = False
+    def pause(self): self.mpv.pause = True
+    def stop(self): self.mpv.stop()
+    
+    def seek(self, time_s):
+        self.mpv.seek(time_s, reference="absolute", precision="exact")
+    
     def get_time(self):
-        t=self.video_player.get_time()
-        if t>=0 and self.active_video:
-            return t
-        best=-1
-        for k,p in self.audio_players.items():
-            if self.active_audio.get(k):
-                pt=p.get_time()
-                if pt>best:
-                    best=pt
-        return best
+        t = self.mpv.time_pos
+        return t if t is not None else 0.0
+
     def is_playing(self):
-        if self.active_video and self.video_player.is_playing():
-            return True
-        for k,p in self.audio_players.items():
-            if self.active_audio.get(k) and p.is_playing():
-                return True
-        return False
-    def set_rate(self, rate):
-        self.video_player.set_rate(rate)
-    def set_audio_rate(self, key, rate):
-        p=self.ensure_audio_player(key)
-        p.set_rate(rate)
-    def set_volume(self, volume):
-        self.video_player.audio_set_volume(int(volume))
-    def set_audio_volume(self, key, volume):
-        p=self.ensure_audio_player(key)
-        p.audio_set_volume(int(volume))
+        return not self.mpv.pause
+
+    def set_speed(self, speed):
+        self.mpv.speed = float(speed)
+
+    def set_volume(self, vol):
+        self.mpv.volume = int(vol)
+
+    def apply_crop(self, crop_dict):
+        if crop_dict:
+            vf_str = f"crop={crop_dict['w']}:{crop_dict['h']}:{crop_dict['x']}:{crop_dict['y']}"
+            self.mpv.vf = vf_str
+        else:
+            self.mpv.vf = ""
+
+    def destroy(self):
+        self.mpv.terminate()

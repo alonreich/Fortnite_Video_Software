@@ -122,7 +122,7 @@ class VideoCompressorApp(UiBuilderMixin, PhaseOverlayMixin, EventsMixin, PlayerM
             os.path.abspath(__file__))
         self.base_dir = os.path.abspath(os.path.join(self.script_dir, os.pardir))
         self.bin_dir = os.path.join(self.base_dir, 'binaries')
-        self.logger = setup_logger(self.base_dir)
+        self.logger = setup_logger(self.base_dir, "Fortnite_Video_Software.log", "Main_App")
         self.live_log_signal.connect(self.log_overlay_sink)
         self.video_ended_signal.connect(self._handle_video_end)
         try:

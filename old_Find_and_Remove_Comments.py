@@ -77,28 +77,25 @@ def analyze_comments(filepath):
                 new_line = re.sub(cite_pattern, '', line)
                 if new_line != line:
                     actions[i] = {'action': 'EDIT', 'type': 'CITATION', 'line': i + 1, 'content': 'Removed', 'new_content': new_line}
-        for i, line in enumerate(lines):
-            if i in actions: continue 
+        for i in range(len(lines)):
+            if i in actions and actions[i]['action'] == 'DELETE':
+                continue
+            line = lines[i]
             if not line.strip():
-                next_content = any(l.strip() for l in lines[i+1:])
-                if not next_content:
-                    actions[i] = {'action': 'DELETE', 'type': 'EMPTY LINE', 'line': i + 1, 'content': '<Trailing Empty>'}
+                is_duplicate = False
+                if i + 1 < len(lines):
+                    if not lines[i+1].strip():
+                        is_duplicate = True
+                if is_duplicate:
+                    actions[i] = {'action': 'DELETE', 'type': 'EMPTY LINE', 'line': i + 1, 'content': '<Redundant Empty>'}
                     continue
-                should_keep = False
+                next_real_line = None
                 for j in range(i + 1, len(lines)):
-                    next_line = lines[j].strip()
-                    if next_line:
-                        if next_line.startswith(('def ', 'class ', 'import ', 'from ', '"""', "'''", '#')):
-                            should_keep = True
+                    if lines[j].strip():
+                        next_real_line = lines[j].strip()
                         break
-                if not should_keep:
-                    actions[i] = {'action': 'DELETE', 'type': 'EMPTY LINE', 'line': i + 1, 'content': '<Excessive Empty>'}
-        for i, line in enumerate(lines):
-            if i in actions or i == 0: continue
-            stripped = line.lstrip()
-            if stripped.startswith(('def ', 'class ')):
-                if lines[i-1].strip():
-                    actions[i] = {'action': 'EDIT', 'type': 'MISSING NEWLINE', 'line': i + 1, 'content': 'Add Blank Line Above', 'new_content': '\n' + line}
+                if not next_real_line:
+                    actions[i] = {'action': 'DELETE', 'type': 'EMPTY LINE', 'line': i + 1, 'content': '<Trailing Empty>'}
         return [v for k, v in sorted(actions.items())]
     except Exception as e:
         return []

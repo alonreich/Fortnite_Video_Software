@@ -17,21 +17,24 @@ def inverse_transform_from_content_area(rect: Tuple[float, float, float, float],
     except (ValueError, AttributeError):
         return rect
     x_content, y_content, w_content, h_content = rect
-    x_canvas = x_content * 1280.0 / 1080.0
-    y_canvas = y_content * 1280.0 / 1080.0
-    w_canvas = w_content * 1280.0 / 1080.0
-    h_canvas = h_content * 1280.0 / 1080.0
-    scale_w = 1280.0 / in_w
-    scale_h = 1920.0 / in_h
+    scale_factor = TARGET_W / CONTENT_W
+    x_scaled = x_content * scale_factor
+    y_scaled = y_content * scale_factor
+    w_scaled = w_content * scale_factor
+    h_scaled = h_content * scale_factor
+    scale_w = TARGET_W / in_w
+    scale_h = TARGET_H / in_h
     scale = max(scale_w, scale_h)
-    crop_x = (in_w * scale - 1280.0) / 2.0
-    crop_y = (in_h * scale - 1920.0) / 2.0
-    x_scaled = x_canvas + crop_x
-    y_scaled = y_canvas + crop_y
-    x_original = x_scaled / scale
-    y_original = y_scaled / scale
-    w_original = w_canvas / scale
-    h_original = h_canvas / scale
+    scaled_w = in_w * scale
+    scaled_h = in_h * scale
+    crop_x = max(0, (scaled_w - TARGET_W) / 2)
+    crop_y = max(0, (scaled_h - TARGET_H) / 2)
+    x_uncropped = x_scaled + crop_x
+    y_uncropped = y_scaled + crop_y
+    x_original = x_uncropped / scale
+    y_original = y_uncropped / scale
+    w_original = w_scaled / scale
+    h_original = h_scaled / scale
     w_original = max(1.0, min(w_original, in_w))
     h_original = max(1.0, min(h_original, in_h))
     x_original = max(0.0, min(x_original, in_w - w_original))
@@ -86,89 +89,140 @@ class FilterBuilder:
         
         def get_rect(section, key):
             return tuple(coords_data.get(section, {}).get(key, [0,0,0,0]))
+        loot_1080 = get_rect('crops_1080p', 'loot')
+        stats_1080 = get_rect('crops_1080p', 'stats')
+        team_1080 = get_rect('crops_1080p', 'team')
         scales = coords_data.get('scales', {})
         overlays = coords_data.get('overlays', {})
-        hp_key = 'boss_hp' if is_boss_hp else 'normal_hp'
-        hp_1080 = get_rect('crops_1080p', hp_key)
-        hp_scale = float(scales.get(hp_key, 1.0))
-        hp_ov = overlays.get(hp_key, {'x': 0, 'y': 0})
-        self.logger.info(f"Using {'Boss' if is_boss_hp else 'Normal'} HP coordinates.")
-        loot_1080 = get_rect('crops_1080p', 'loot')
+        if is_boss_hp:
+            hp_1080 = get_rect('crops_1080p', 'boss_hp')
+            healthbar_scale = float(scales.get('boss_hp', 1.0))
+            hp_ov = overlays.get('boss_hp', {'x': 0, 'y': 0})
+            self.logger.info("Using Boss HP coordinates.")
+        else:
+            hp_1080 = get_rect('crops_1080p', 'normal_hp')
+            healthbar_scale = float(scales.get('normal_hp', 1.0))
+            hp_ov = overlays.get('normal_hp', {'x': 0, 'y': 0})
+            self.logger.info("Using Normal HP coordinates.")
         loot_scale = float(scales.get('loot', 1.0))
-        stats_1080 = get_rect('crops_1080p', 'stats')
         stats_scale = float(scales.get('stats', 1.0))
-        team_1080 = get_rect('crops_1080p', 'team')
         team_scale = float(scales.get('team', 1.0))
         try:
-            res_parts = original_res_str.split('x')
-            if len(res_parts) != 2:
-                raise ValueError("Invalid resolution format")
-            in_w, in_h = map(int, res_parts)
-        except (ValueError, AttributeError):
+            in_w, in_h = map(int, original_res_str.split('x'))
+        except:
             in_w, in_h = 1920, 1080
-            self.logger.warning(f"Failed to parse resolution '{original_res_str}', defaulting to 1920x1080")
-        self.logger.info(f"Mobile Crop Processing: Input={in_w}x{in_h}")
+        if not is_boss_hp and hp_1080[0] > in_w:
+            self.logger.warning("Detected oversized 'normal_hp' coordinates. Attempting to correct by down-scaling.")
+            w, h, x, y = hp_1080
+            w = w / healthbar_scale
+            h = h / healthbar_scale
+            hp_1080 = (w, h, x, y)
+        stats_1080 = get_rect('crops_1080p', 'stats')
+        if stats_1080[0] > in_w:
+            self.logger.warning("Detected oversized 'stats' coordinates. Attempting to correct by down-scaling.")
+            w, h, x, y = stats_1080
+            w = w / stats_scale
+            h = h / stats_scale
+            stats_1080 = (w, h, x, y)
+        scale_factor = in_h / 1080.0
+        self.logger.info(f"Mobile Crop: Scale factor: {scale_factor:.4f} (Input: {in_w}x{in_h})")
 
-        def get_original_crop(crop_ui):
-            w_ui, h_ui, x_ui, y_ui = crop_ui
-            transformed = inverse_transform_from_content_area_int((x_ui, y_ui, w_ui, h_ui), original_res_str)
-            return (transformed[2], transformed[3], transformed[0], transformed[1])
-        hp_orig = get_original_crop(hp_1080)
-        loot_orig = get_original_crop(loot_1080)
-        stats_orig = get_original_crop(stats_1080)
-        team_orig = get_original_crop(team_1080)
+        def scale_box(box, s):
+            new_box = []
+            for i, v in enumerate(box):
+                scaled_v = int(round(v * s))
+                even_v = (scaled_v // 2) * 2
+                if i < 2 and v > 0 and even_v <= 0:
+                    even_v = 2
+                new_box.append(even_v)
+            return tuple(new_box)
+        if COORDINATE_MATH_AVAILABLE:
+            try:
+                def inverse_transform_crop(crop_1080):
+                    w, h, x, y = crop_1080
+                    transformed = inverse_transform_from_content_area_int((x, y, w, h), original_res_str)
+                    return (transformed[2], transformed[3], transformed[0], transformed[1])
+                hp_original = inverse_transform_crop(hp_1080)
+                loot_original = inverse_transform_crop(loot_1080)
+                stats_original = inverse_transform_crop(stats_1080)
+                team_original = inverse_transform_crop(team_1080)
+
+                def safe_clamp_and_scale(original_coords):
+                    w, h, x, y = original_coords
+                    x = max(0, x)
+                    y = max(0, y)
+                    return scale_box((w, h, x, y), 1.0)
+                hp = safe_clamp_and_scale(hp_original)
+                loot = safe_clamp_and_scale(loot_original)
+                stats = safe_clamp_and_scale(stats_original)
+                team = safe_clamp_and_scale(team_original)
+                self.logger.info(f"Using inverse transformed coordinates for cropping (with safety clamp)")
+            except Exception as e:
+                self.logger.warning(f"Inverse transformation failed: {e}. Falling back to old method.")
+
+                def safe_scale_box(box, s):
+                    w, h, x, y = box
+                    x = max(0, x)
+                    y = max(0, y)
+                    return scale_box((w, h, x, y), s)
+                hp = safe_scale_box(hp_1080, scale_factor)
+                loot = safe_scale_box(loot_1080, scale_factor)
+                stats = safe_scale_box(stats_1080, scale_factor)
+                team = safe_scale_box(team_1080, scale_factor)
+        else:
+            hp = scale_box(hp_1080, scale_factor)
+            loot = scale_box(loot_1080, scale_factor)
+            stats = scale_box(stats_1080, scale_factor)
+            team = scale_box(team_1080, scale_factor)
+        hp_crop = f"{hp[0]}:{hp[1]}:{hp[2]}:{hp[3]}"
+        loot_crop = f"{loot[0]}:{loot[1]}:{loot[2]}:{loot[3]}"
+        stats_crop = f"{stats[0]}:{stats[1]}:{stats[2]}:{stats[3]}"
+        team_crop = f"{team[0]}:{team[1]}:{team[2]}:{team[3]}"
+        loot_s_str = f"scale={int(round(loot_1080[0] * loot_scale))}:{int(round(loot_1080[1] * loot_scale))}:flags=bilinear"
+        hp_s_str = f"scale={int(round(hp_1080[0] * healthbar_scale))}:{int(round(hp_1080[1] * healthbar_scale))}:flags=bilinear"
+        stats_s_str = f"scale={int(round(stats_1080[0] * stats_scale))}:{int(round(stats_1080[1] * stats_scale))}:flags=bilinear"
+        team_s_str = f"scale={int(round(team_1080[0] * team_scale))}:{int(round(team_1080[1] * team_scale))}:flags=bilinear"
+        BACKEND_SCALE = 1280.0 / 1080.0
+        lx_raw = overlays.get('loot', {}).get('x', 0)
+        ly_raw = overlays.get('loot', {}).get('y', 0)
+        sx_raw = overlays.get('stats', {}).get('x', 0)
+        sy_raw = overlays.get('stats', {}).get('y', 0)
+        hpx_raw = hp_ov.get('x', 0)
+        hpy_raw = hp_ov.get('y', 0)
+        lx = int(round(lx_raw * BACKEND_SCALE))
+        ly = int(round(ly_raw * BACKEND_SCALE))
+        sx = int(round(sx_raw * BACKEND_SCALE))
+        sy = int(round(sy_raw * BACKEND_SCALE))
+        hpx = int(round(hpx_raw * BACKEND_SCALE))
+        hpy = int(round(hpy_raw * BACKEND_SCALE))
         f_main = "[main]scale=1280:1920:force_original_aspect_ratio=increase:flags=bilinear,crop=1280:1920[main_cropped]"
-        
-        def make_hud_filter(name, crop_orig, ui_w, ui_h, user_scale):
-            crop_str = f"{crop_orig[0]}:{crop_orig[1]}:{crop_orig[2]}:{crop_orig[3]}"
-            render_w = int(round(ui_w * user_scale * 1280 / 1080))
-            render_h = int(round(ui_h * user_scale * 1280 / 1080))
-            return f"[{name}]crop={crop_str},scale={render_w}:{render_h}:flags=bilinear,pad=iw+4:ih+4:2:2:black,format=yuva444p[{name}_scaled]"
-        f_hp = make_hud_filter("healthbar", hp_orig, hp_1080[0], hp_1080[1], hp_scale)
-        f_loot = make_hud_filter("lootbar", loot_orig, loot_1080[0], loot_1080[1], loot_scale)
-        f_stats = make_hud_filter("stats", stats_orig, stats_1080[0], stats_1080[1], stats_scale)
-        common_filters = f"{f_main};{f_hp};{f_loot};{f_stats}"
-        z_orders = coords_data.get('z_orders', {})
-        layers = [
-            {'name': 'lootbar', 'filter_out': '[lootbar_scaled]', 'x': overlays.get('loot', {}).get('x', 0), 'y': overlays.get('loot', {}).get('y', 0), 'z': z_orders.get('loot', 10)},
-            {'name': 'healthbar', 'filter_out': '[healthbar_scaled]', 'x': hp_ov.get('x', 0), 'y': hp_ov.get('y', 0), 'z': z_orders.get(hp_key, 20)},
-            {'name': 'stats', 'filter_out': '[stats_scaled]', 'x': overlays.get('stats', {}).get('x', 0), 'y': overlays.get('stats', {}).get('y', 0), 'z': z_orders.get('stats', 30)}
-        ]
+        f_loot = f"[lootbar]crop={loot_crop},drawbox=t=2:c=black,{loot_s_str},format=yuva444p[lootbar_scaled]"
+        f_hp = f"[healthbar]crop={hp_crop},drawbox=t=2:c=black,{hp_s_str},format=yuva444p[healthbar_scaled]"
+        f_stats = f"[stats]crop={stats_crop},drawbox=t=2:c=black,{stats_s_str},format=yuva444p[stats_scaled]"
+        common_filters = f"{f_main};{f_loot};{f_hp};{f_stats}"
+        ov_1 = f"[main_cropped][lootbar_scaled]overlay={lx}:{ly}[t1]"
+        ov_2 = f"[t1][healthbar_scaled]overlay={hpx}:{hpy}[t2]"
         if show_teammates:
-            f_team = make_hud_filter("team", team_orig, team_1080[0], team_1080[1], team_scale)
-            common_filters += f";{f_team}"
-            layers.append({'name': 'team', 'filter_out': '[team_scaled]', 'x': overlays.get('team', {}).get('x', 0), 'y': overlays.get('team', {}).get('y', 0), 'z': z_orders.get('team', 40)})
-        layers.sort(key=lambda item: item['z'])
-        overlay_chain = ""
-        current_pad = "[main_cropped]"
-        for i, layer in enumerate(layers):
-            next_pad = f"[t{i+1}]" if i < len(layers) - 1 else "[vpreout]"
-            raw_x = layer['x']
-            raw_y = layer['y']
-            if raw_x > 1080:
-                lx = int(round(raw_x))
-                ly = int(round(raw_y - (150 * 1280 / 1080)))
-            else:
-                lx = int(round(raw_x * 1280 / 1080))
-                ly = int(round((raw_y - 150) * 1280 / 1080))
-            overlay_chain += f"{current_pad}{layer['filter_out']}overlay={lx-2}:{ly-2}{next_pad};"
-            current_pad = next_pad
-        split_count = 5 if show_teammates else 4
-        split_cmd = f"split={split_count}[main][healthbar][lootbar][stats]"
-        if show_teammates: split_cmd += "[team]"
-        video_filter_cmd = f"{split_cmd};{common_filters};{overlay_chain.rstrip(';')}"
-        video_filter_cmd += ";[vpreout]scale=1080:-2,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black"
-        return video_filter_cmd
-        if overlay_chain.endswith(";"):
-            overlay_chain = overlay_chain[:-1]
-        split_cmd = f"split={split_count}[main][lootbar][healthbar][stats]"
-        if show_teammates:
-            split_cmd += "[team]"
-        video_filter_cmd = (
-            f"{split_cmd};"
-            f"{common_filters};"
-            f"{overlay_chain}"
-        )
+            ov_3 = f"[t2][stats_scaled]overlay={sx}:{sy}[t3]"
+            tx_raw = overlays.get('team', {}).get('x', 0)
+            ty_raw = overlays.get('team', {}).get('y', 0)
+            tx = int(round(tx_raw * BACKEND_SCALE))
+            ty = int(round(ty_raw * BACKEND_SCALE))
+            f_team = f"[team]crop={team_crop},drawbox=t=2:c=black,{team_s_str},format=yuva444p[team_scaled]"
+            video_filter_cmd = (
+                f"split=5[main][lootbar][healthbar][stats][team];"
+                f"{common_filters};"
+                f"{f_team};"
+                f"{ov_1};{ov_2};{ov_3};"
+                f"[t3][team_scaled]overlay={tx}:{ty}[vpreout]"
+            )
+        else:
+            ov_3 = f"[t2][stats_scaled]overlay={sx}:{sy}[vpreout]"
+            video_filter_cmd = (
+                f"split=4[main][lootbar][healthbar][stats];"
+                f"{common_filters};"
+                f"{ov_1};{ov_2};{ov_3}"
+            )
         video_filter_cmd += ";[vpreout]scale=1080:-2,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black"
         return video_filter_cmd
 

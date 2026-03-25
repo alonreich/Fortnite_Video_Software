@@ -45,7 +45,7 @@ from state_manager import get_state_manager
 from graphics_items import ResizablePixmapItem
 from coordinate_math import (
     transform_to_content_area, inverse_transform_from_content_area_int, get_resolution_ints, outward_round_rect, scale_round,
-    PORTRAIT_W, PORTRAIT_H, UI_PADDING_TOP, UI_PADDING_BOTTOM, UI_CONTENT_H
+    PORTRAIT_W, PORTRAIT_H, UI_PADDING_TOP, UI_PADDING_BOTTOM
 )
 
 from resource_manager import get_resource_manager
@@ -397,9 +397,7 @@ class CropApp(KeyboardShortcutMixin, PersistentWindowMixin, QWidget, CropAppHand
             self.transparency_slider = getattr(self, 'transparency_slider', None)
             self.portrait_scene = getattr(self, 'portrait_scene', None)
             self.portrait_view = getattr(self, 'portrait_view', None)
-            self.media_processor = MediaProcessor(self.bin_dir, wid=None)
-            if hasattr(self, 'video_surface') and self.video_surface:
-                self.video_surface.paintEvent = lambda event: None
+            self.media_processor = MediaProcessor(self.bin_dir, wid=int(self.video_surface.winId()) if self.video_surface else None)
         except Exception as e:
             logger_initial.critical(f"SetupUI Failed: {e}", exc_info=True)
             raise e
@@ -535,8 +533,6 @@ class CropApp(KeyboardShortcutMixin, PersistentWindowMixin, QWidget, CropAppHand
                      self.media_processor.original_resolution = session_data['resolution']
         except Exception as e:
             logger_initial.error(f"Session Load Failed: {e}")
-        if hasattr(self, 'video_surface') and self.video_surface:
-            QTimer.singleShot(50, lambda: self.media_processor.attach_wid(self.video_surface.winId()))
         if file_path and os.path.exists(file_path):
             try:
                 self.load_file(file_path)

@@ -1,4 +1,4 @@
-import time
+﻿import time
 import os
 import sys
 import threading
@@ -126,15 +126,25 @@ class MergerMusicWizard(
         self._borrowed_video_player = mpv_instance
         if mpv:
             try:
-                kwargs = {'osc': False, 'hr_seek': 'yes', 'hwdec': 'auto', 'keep_open': 'yes', 'loglevel': "info", 'ytdl': False, 'demuxer_max_bytes': '500M', 'demuxer_max_back_bytes': '100M'}
-                if sys.platform == 'win32':
-                    kwargs['vo'] = 'gpu'; kwargs['gpu-context'] = 'd3d11'
-                self.mpv_instance = mpv.MPV(**kwargs)
+                _video_wid = int(self.video_container.winId()) if hasattr(self, 'video_container') else None
+                self.mpv_instance = MPVSafetyManager.create_safe_mpv(
+                    wid=_video_wid,
+                    osc=False, hr_seek='yes', hwdec='auto', keep_open='yes',
+                    loglevel="info", ytdl=False,
+                    demuxer_max_bytes='500M', demuxer_max_back_bytes='100M',
+                    vo='gpu' if sys.platform == 'win32' else 'gpu',
+                    gpu_context='d3d11' if sys.platform == 'win32' else None,
+                )
                 self._wizard_video_player = self.mpv_instance
                 if self._wizard_video_player: self._owns_video_player = True
                 else: self._owns_video_player = False
-                time.sleep(0.6) 
-                self._wizard_music_player = MPVSafetyManager.create_safe_mpv(vid='no', vo='null', osc=False, input_default_bindings=False, input_vo_keyboard=False, hr_seek='yes', hwdec='no', keep_open='yes', loglevel="info", ytdl=False, demuxer_max_bytes='300M', demuxer_max_back_bytes='60M')
+                self._wizard_music_player = MPVSafetyManager.create_safe_mpv(
+                    vid='no', vo='null', osc=False,
+                    input_default_bindings=False, input_vo_keyboard=False,
+                    hr_seek='yes', hwdec='no', keep_open='yes', loglevel="info",
+                    ytdl=False, demuxer_max_bytes='300M',
+                    demuxer_max_back_bytes='60M',
+                )
             except Exception as e:
                 self._wizard_video_player = None
                 self._wizard_music_player = None
@@ -219,16 +229,7 @@ class MergerMusicWizard(
         player = getattr(self, player_attr_name, None)
         if not player: return True
         try:
-            if getattr(self, "_mpv_lock", None) and self._mpv_lock.acquire(timeout=0.05):
-                try: player.pause = True
-                finally: self._mpv_lock.release()
-            else: player.pause = True
-            player.stop()
-            start_time = time.time()
-            while time.time() - start_time < timeout:
-                try: _ = player.time_pos
-                except: break
-                time.sleep(0.02)
+            MPVSafetyManager.safe_mpv_shutdown(player, timeout=timeout)
             setattr(self, player_attr_name, None); return True
         except: setattr(self, player_attr_name, None); return False
 

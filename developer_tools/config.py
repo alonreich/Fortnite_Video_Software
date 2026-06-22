@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 sys.dont_write_bytecode = True
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
@@ -186,6 +186,7 @@ Z_ORDER_MAP = {
     'team': 40,
     'spectating': 100
 }
+
 def get_stylesheet():
     try:
         import os
@@ -199,10 +200,6 @@ def get_stylesheet():
                 for k, v in UI_LAYOUT.__dict__.items():
                     if not k.startswith("__"):
                         content = content.replace(f"{{UI_LAYOUT.{k}}}", str(v))
-                # Inject absolute path to the developer_tools directory so that
-                # url() references in theme.qss (e.g. arrow SVGs) resolve
-                # correctly regardless of the application's working directory.
-                # Qt requires forward slashes even on Windows.
                 theme_dir = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/")
                 content = content.replace("{THEME_DIR}", theme_dir)
                 return content

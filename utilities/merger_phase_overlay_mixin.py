@@ -80,7 +80,6 @@ class MergerPhaseOverlayMixin:
             painter.fillRect(self._overlay.rect(), QColor(11, 20, 29, 250))
             painter.end()
         self._overlay.paintEvent = _paint_overlay
-
         self.live_log = QPlainTextEdit(self._overlay)
         self.live_log.setReadOnly(True)
         self.live_log.setMaximumBlockCount(5000)

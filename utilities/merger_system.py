@@ -168,6 +168,7 @@ class MergerLogManager:
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
         from system.utils import SafeStreamHandler
         console = SafeStreamHandler(sys.stdout)
         console.setFormatter(formatter)

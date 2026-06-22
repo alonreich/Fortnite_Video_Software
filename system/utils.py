@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import psutil
 import logging
@@ -380,7 +380,6 @@ class ConsoleManager:
         return m.get(str(name), str(name).strip().lower())
     @staticmethod
     def initialize(base_dir: str, log_filename: str, logger_name: str):
-        # Sanitize root logger immediately to prevent pipe errors during early boot or late exit
         root = logging.getLogger()
         for h in root.handlers[:]:
             if isinstance(h, logging.StreamHandler) and not isinstance(h, SafeStreamHandler):
@@ -390,7 +389,6 @@ class ConsoleManager:
                     sc.setFormatter(h.formatter)
                     root.addHandler(sc)
                 except: pass
-
         app_p = logger_name.lower().replace(" ", "_")
         f_l_n = f"{app_p}_{log_filename}" if not log_filename.startswith(app_p) else log_filename
         logger = LogManager.setup_logger(base_dir, f_l_n, logger_name)
@@ -668,6 +666,37 @@ class MPVSafetyManager:
             if elapsed < 400:
                 QThread.msleep(int(400 - elapsed))
             MPVSafetyManager._last_creation_time = time.time() * 1000
+            wid = kwargs.pop('wid', None)
+            e_f = kwargs.pop('extra_mpv_flags', [])
+            for k in ('load_scripts', 'config', 'osc', 'ytdl'):
+                kwargs.pop(k, None)
+            kwargs.setdefault('hr_seek', 'yes')
+            kwargs.setdefault('keep_open', 'yes')
+            kwargs = diagnostic_runtime.apply_mpv_runtime_overrides(kwargs)
+            kwargs.pop('log_file', None)
+            kwargs.pop('log-file', None)
+            kwargs.pop('wid', None)
+            if wid is not None and str(kwargs.get('vo', '')).lower() == 'null' and not diagnostic_runtime.is_isolation_active():
+                kwargs['vo'] = 'gpu'
+            try:
+                from system.mpv_process_manager import MpvProcessProxy
+                player = MpvProcessProxy(wid=wid, extra_mpv_flags=e_f, **kwargs)
+                player._safe_shutdown_initiated = False
+                MPVSafetyManager._instances.add(player)
+                for p, v in e_f:
+                    try: player.set_property(p, v)
+                    except Exception: pass
+                diagnostic_runtime.append_python_debug_throttled(
+                    "mpv-process-mode",
+                    f"MPV PROCESS ISOLATION ACTIVE | pid={player.handle} | wid={wid}"
+                )
+                return player
+            except Exception as proc_exc:
+                diagnostic_runtime.append_python_debug_throttled(
+                    "mpv-process-mode-fallback",
+                    f"MPV process isolation unavailable, falling back to in-process: {proc_exc}",
+                    min_interval_sec=5.0
+                )
             try:
                 import mpv
                 l_h = kwargs.pop('log_handler', None)
@@ -676,9 +705,7 @@ class MPVSafetyManager:
                         try: l_h(lvl, pref, txt)
                         except: pass
                     kwargs['log_handler'] = s_l_p
-                wid = kwargs.pop('wid', None)
                 s_k = {'hr_seek': 'yes', 'osc': False, 'ytdl': False, 'load_scripts': False, 'config': False, 'keep_open': kwargs.get('keep_open', 'yes'), 'loglevel': 'error'}
-                e_f = kwargs.pop('extra_mpv_flags', [])
                 kwargs.pop('load_scripts', None); kwargs.pop('config', None); kwargs.pop('osc', None); kwargs.pop('ytdl', None)
                 s_k.update(kwargs)
                 if wid is not None:
@@ -765,7 +792,6 @@ class MediaProber:
                 dur = float(fmt.get('duration', 0.0) or 0.0)
             return dur, res
         except: return 0.0, "0x0"
-
     @staticmethod
     def probe_volume(bin_dir, path):
         try:

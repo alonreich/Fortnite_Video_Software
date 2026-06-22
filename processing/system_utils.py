@@ -212,7 +212,6 @@ def monitor_ffmpeg_progress(proc, duration_sec, progress_signal, check_disk_spac
                 pass
         low = s.lower()
         is_critical = any(sig in low for sig in critical_signatures) and not any(ign in low for ign in ignored_signatures)
-
         if on_error_line and is_critical:
             on_error_line(s)
             stats["critical_lines"].append(s)

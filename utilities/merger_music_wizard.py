@@ -136,31 +136,22 @@ class MergerMusicWizard(
         self._borrowed_video_player = mpv_instance
         if mpv:
             try:
-                self.logger.info("WIZARD: Creating dedicated video player engine...")
-                kwargs = {
-                    'osc': False,
-                    'hr_seek': 'yes',
-                    'hwdec': 'auto',
-                    'keep_open': 'yes',
-                    'loglevel': "info",
-                    'ytdl': False,
-                    'demuxer_max_bytes': '500M',
-                    'demuxer_max_back_bytes': '100M',
-                }
-                if sys.platform == 'win32':
-                    kwargs['vo'] = 'gpu'
-                    kwargs['gpu-context'] = 'd3d11'
-                self.mpv_instance = mpv.MPV(**kwargs)
+                self.logger.info("WIZARD: Creating dedicated video player engine (process-isolated)...")
+                _video_wid = int(self.video_container.winId()) if hasattr(self, 'video_container') else None
+                self.mpv_instance = MPVSafetyManager.create_safe_mpv(
+                    wid=_video_wid,
+                    osc=False,
+                    hr_seek='yes',
+                    hwdec='auto',
+                    keep_open='yes',
+                    loglevel="info",
+                    ytdl=False,
+                    demuxer_max_bytes='500M',
+                    demuxer_max_back_bytes='100M',
+                    vo='gpu' if sys.platform == 'win32' else 'gpu',
+                    gpu_context='d3d11' if sys.platform == 'win32' else None,
+                )
                 self._wizard_video_player = self.mpv_instance
-                if False:
-                    self.mpv_v = mpvProcessProxy('video', self.logger, self.bin_dir)
-                    self.mpv_m = mpvProcessProxy('music', self.logger, self.bin_dir)
-                    self._video_player = self.mpv_v.media_player_new() if self.mpv_v else None
-                    _ = "--avcodec-hw=any"
-                    _ = "--vout=direct3d11"
-                    _ = "fallback_args = ["
-                    _ = "'--vout=dummy'"
-                    _ = "CPU"
                 if self._wizard_video_player:
                     self.logger.info("WIZARD: Dedicated video player instance created.")
                     self._owns_video_player = True
@@ -168,7 +159,6 @@ class MergerMusicWizard(
                     self.logger.error("WIZARD: Failed to create video player")
                     self._wizard_video_player = None
                     self._owns_video_player = False
-                time.sleep(0.3) 
                 self.logger.info("WIZARD: Creating music player engine...")
                 self._wizard_music_player = MPVSafetyManager.create_safe_mpv(
                     vid='no',
@@ -257,27 +247,12 @@ class MergerMusicWizard(
             self._registered_workers.append(worker)
 
     def _safe_mpv_shutdown(self, player_attr_name, timeout=0.5):
-        """[FIX] Faster shutdown for wizard cleanup to prevent UI freeze."""
-
-        import time
+        """Deterministically terminates the isolated MPV child process."""
         player = getattr(self, player_attr_name, None)
         if not player:
             return True
         try:
-            if getattr(self, "_mpv_lock", None) and self._mpv_lock.acquire(timeout=0.05):
-                try: player.pause = True
-                except: pass
-                finally: self._mpv_lock.release()
-            else:
-                try: player.pause = True
-                except: pass
-            try: player.stop()
-            except: pass
-            start_time = time.time()
-            while time.time() - start_time < timeout:
-                try: _ = player.time_pos
-                except: break
-                time.sleep(0.02)
+            MPVSafetyManager.safe_mpv_shutdown(player, timeout=timeout)
             setattr(self, player_attr_name, None)
             return True
         except Exception:

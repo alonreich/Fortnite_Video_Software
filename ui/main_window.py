@@ -1,4 +1,4 @@
-import faulthandler, logging, os, signal, subprocess, sys, time, threading, traceback, weakref
+﻿import faulthandler, logging, os, signal, subprocess, sys, time, threading, traceback, weakref
 from PyQt5.QtCore import (Qt, QTimer, pyqtSignal, QEvent, QRect, QPoint, QSize, QCoreApplication, QThread)
 from PyQt5.QtGui import (QIcon, QPixmap, QColor, QFont, QPainter)
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMessageBox, QStyle, QApplication, QLabel, QFrame, QSizePolicy, QProgressBar, QStackedLayout, QPushButton, QCheckBox, QSpinBox, QDoubleSpinBox, QGridLayout, QLineEdit, QSlider, QTextEdit, QPlainTextEdit, QAbstractSpinBox)
@@ -159,6 +159,7 @@ class FortniteVideoSoftware(QMainWindow, PlayerMixin, UiBuilderMixin, VolumeMixi
         self._setup_recovery_manager()
         self.set_style(); self.init_ui(); self._setup_mpv(); self._set_video_controls_enabled(False)
         self.setAcceptDrops(True); self.status_bar = self.statusBar(); self.status_bar.hide(); self.restore_geometry()
+
         def redirect_show_message(message, timeout=5000):
             if hasattr(self, "_set_right_status_message"):
                 self._set_right_status_message(message, timeout)
@@ -220,11 +221,9 @@ class FortniteVideoSoftware(QMainWindow, PlayerMixin, UiBuilderMixin, VolumeMixi
         self.recovery_timer = QTimer(self)
         self.recovery_timer.timeout.connect(self._save_recovery_state)
         self.recovery_timer.start(10000)
-
         self.recovery_debounce_timer = QTimer(self)
         self.recovery_debounce_timer.setSingleShot(True)
         self.recovery_debounce_timer.timeout.connect(self._save_recovery_state)
-
         QTimer.singleShot(1000, self._connect_recovery_signals)
 
     def _trigger_recovery_save(self):
@@ -236,7 +235,6 @@ class FortniteVideoSoftware(QMainWindow, PlayerMixin, UiBuilderMixin, VolumeMixi
 
     def _connect_recovery_signals(self):
         try:
-            # Immediate save for these (user likely to crash after manual action)
             immediate_widgets = [
                 self.start_trim_button, self.end_trim_button, self.thumb_pick_btn,
                 self.music_button, self.granular_button, getattr(self, "granular_clear_button", None)
@@ -245,8 +243,6 @@ class FortniteVideoSoftware(QMainWindow, PlayerMixin, UiBuilderMixin, VolumeMixi
                 if b is not None:
                     try: b.clicked.connect(self._immediate_recovery_save)
                     except: pass
-
-            # Debounced save for these (continuous adjustments)
             debounced_widgets = [
                 self.mobile_checkbox, self.teammates_checkbox, self.boss_hp_checkbox,
                 self.granular_checkbox, getattr(self, "no_fade_checkbox", None),
@@ -261,7 +257,6 @@ class FortniteVideoSoftware(QMainWindow, PlayerMixin, UiBuilderMixin, VolumeMixi
                     elif hasattr(w, "valueChanged"): w.valueChanged.connect(self._trigger_recovery_save)
                     elif hasattr(w, "textChanged"): w.textChanged.connect(self._trigger_recovery_save)
                 except: pass
-
             if hasattr(self, "positionSlider"):
                 self.positionSlider.valueChanged.connect(self._trigger_recovery_save)
                 if hasattr(self.positionSlider, "trim_times_changed"):
@@ -274,11 +269,9 @@ class FortniteVideoSoftware(QMainWindow, PlayerMixin, UiBuilderMixin, VolumeMixi
     def _save_recovery_state(self, sync=False):
         if not hasattr(self, "recovery_manager"): return
         if getattr(self, "_restoring_recovery_state", False): return
-
         input_path = getattr(self, "source_file_path", None) or self.input_file_path
         if not input_path:
             return
-
         music_tracks = _serialize_recovery_music_tracks(getattr(self, "_wizard_tracks", []))
         has_music = bool(music_tracks)
         music_start_ms = _recovery_int(getattr(self, "music_timeline_start_ms", 0), 0)
@@ -360,7 +353,6 @@ class FortniteVideoSoftware(QMainWindow, PlayerMixin, UiBuilderMixin, VolumeMixi
             self.speed_segments = _normalize_recovery_speed_segments(v.get("speed_segments", []))
             self.hardware_strategy = v.get("hardware_strategy", self.hardware_strategy)
             self.target_mb_override = v.get("target_mb_override", None)
-
             if hasattr(self, "speed_spinbox"): self.speed_spinbox.setValue(self.playback_rate)
             if hasattr(self, "volume_slider"): self.volume_slider.setValue(v.get("video_mix_volume", 100))
             if hasattr(self, "quality_slider"): self.quality_slider.setValue(v.get("quality_slider_index", 7))

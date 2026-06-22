@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import subprocess
 import uuid
@@ -394,10 +394,6 @@ class UiBuilderMixin:
         self._bottom_badge_container.setGraphicsEffect(self._bottom_badge_opacity)
         self._bottom_badge_opacity.setOpacity(0.0)
         self._init_trim_controls()
-        # 3-column grid: cols 0 and 2 share equal stretch so col 1 (trim_layout) is
-        # always anchored to the true horizontal centre of the player column.
-        # All widgets stored on self to prevent Python 3.13 GC freeing wrappers
-        # while Qt C++ still holds live pointers (cause of 0xc0000005 crashes).
         self._trim_grid = QGridLayout()
         self._trim_grid.setContentsMargins(10, 0, 10, 0)
         self._trim_grid.setHorizontalSpacing(0)
@@ -587,7 +583,6 @@ class UiBuilderMixin:
             s.setCursor(Qt.PointingHandCursor)
             s.setToolTip("Fine-tune trim timing")
             s.valueChanged.connect(self._on_trim_spin_changed)
-        # Seconds need slightly more room than minutes (always 2 digits 00-59)
         self.start_second_input.setMaximumWidth(46)
         self.end_second_input.setMaximumWidth(46)
         self.start_trim_button = QPushButton('MARK START')
@@ -616,8 +611,6 @@ class UiBuilderMixin:
             return l
         self.start_ms_input.hide()
         self.end_ms_input.hide()
-
-        # Create professional Timecode-style containers
         self.start_time_group = QFrame()
         self.start_time_group.setStyleSheet(f"QFrame {{ background: #1a252f; border: 1px solid #1f3545; border-radius: 6px; padding: 1px; }}")
         stg_l = QHBoxLayout(self.start_time_group)
@@ -625,7 +618,6 @@ class UiBuilderMixin:
         stg_l.setSpacing(4)
         stg_l.addLayout(_ml('MIN', self.start_minute_input))
         stg_l.addLayout(_ml('SEC', self.start_second_input))
-
         self.end_time_group = QFrame()
         self.end_time_group.setStyleSheet(f"QFrame {{ background: #1a252f; border: 1px solid #1f3545; border-radius: 6px; padding: 1px; }}")
         etg_l = QHBoxLayout(self.end_time_group)
@@ -633,7 +625,6 @@ class UiBuilderMixin:
         etg_l.setSpacing(4)
         etg_l.addLayout(_ml('MIN', self.end_minute_input))
         etg_l.addLayout(_ml('SEC', self.end_second_input))
-
         self.boss_hp_checkbox = QCheckBox('Boss HP')
         self.boss_hp_checkbox.setStyleSheet(f'color: {UI_COLORS.TEXT_PRIMARY}; font-size: 9px;')
         self.boss_hp_checkbox.setCursor(Qt.PointingHandCursor)
@@ -767,7 +758,6 @@ class UiBuilderMixin:
         self.portrait_text_input.setVisible(self.mobile_checkbox.isChecked())
         self.portrait_text_input.setStyleSheet(f'background-color: #0b141d; color: {UI_COLORS.TEXT_PRIMARY}; border: 1px solid #1f3545; border-radius: 4px; padding: 4px; font-size: 10px;')
         self.portrait_text_input.editingFinished.connect(lambda: self._save_recovery_state() if hasattr(self, "_save_recovery_state") else None)
-        # Portrait stuff
         l_col = QVBoxLayout()
         l_row = QHBoxLayout()
         l_row.addWidget(self.mobile_checkbox)
@@ -776,9 +766,6 @@ class UiBuilderMixin:
         l_col.addWidget(self.portrait_text_input)
         self._portrait_inner_w = QWidget()
         self._portrait_inner_w.setLayout(l_col)
-
-        # Left cell: portrait + quality, left-anchored
-        # Stored on self to prevent GC-during-C++-use crash (python313.dll 0xc0000005)
         self._proc_left_panel = QWidget()
         left_proc_l = QHBoxLayout(self._proc_left_panel)
         left_proc_l.setContentsMargins(10, 0, 0, 0)
@@ -786,8 +773,6 @@ class UiBuilderMixin:
         left_proc_l.addWidget(self._portrait_inner_w)
         left_proc_l.addWidget(self.quality_container)
         left_proc_l.addStretch(1)
-
-        # Right cell: granular + speed, right-anchored
         self._proc_right_panel = QWidget()
         right_proc_l = QHBoxLayout(self._proc_right_panel)
         right_proc_l.setContentsMargins(0, 0, 10, 0)
@@ -795,8 +780,6 @@ class UiBuilderMixin:
         right_proc_l.addStretch(1)
         right_proc_l.addWidget(granular_w)
         right_proc_l.addWidget(speed_w)
-
-        # 3-column grid: equal stretch on cols 0 & 2 — PROCESS always at exact centre
         grid = QGridLayout()
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(0)

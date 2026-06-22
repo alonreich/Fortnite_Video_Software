@@ -353,7 +353,7 @@ class VideoMergerWindow(QMainWindow, MergerPhaseOverlayMixin, MergerPhaseOverlay
         self._ensure_overlay_widgets()
         self._pulse_timer = QTimer(self)
         self._pulse_timer.timeout.connect(self._pulse_button_color)
-        self._pulse_phase = 0 # Initialize phase
+        self._pulse_phase = 0
         self.setup_progress_visualization()
         self.setup_keyboard_shortcuts()
         
@@ -688,12 +688,10 @@ class VideoMergerWindow(QMainWindow, MergerPhaseOverlayMixin, MergerPhaseOverlay
             self.set_status_message(f"Preparing merge. Estimated output length: {est_text}", "color: #43b581;", 2000, force=True)
         self._show_processing_overlay()
         self._pulse_timer.start(250)
-        
         self.btn_merge.hide()
         self.btn_cancel.show()
         self.btn_processing.show()
         self.btn_processing.setEnabled(False)
-        
         self.event_handler.update_button_states()
         self.logic_handler.request_save_config()
         self.set_status_message("Analyzing files...", "color: #43b581;", 0, force=True)
@@ -959,21 +957,16 @@ class VideoMergerWindow(QMainWindow, MergerPhaseOverlayMixin, MergerPhaseOverlay
         self._pulse_timer.stop()
         self._hide_processing_overlay()
         self.setWindowTitle("Video Merger")
-        
-        # Robust Temp Cleanup to avoid WinError 32 (File in use)
         if self._temp_dir:
             try:
-                # Explicitly signal intent to cleanup and wait slightly for handles to clear
                 td = self._temp_dir
-                self._temp_dir = None # Clear reference first
+                self._temp_dir = None
                 td.cleanup()
             except Exception as ex:
                 self.logger.debug(f"Temp dir cleanup deferred/failed: {ex}")
-        
         self.btn_cancel.hide()
         self.btn_processing.hide()
         self.btn_merge.show()
-        
         self.event_handler.update_button_states()
         if success:
             result = self.event_handler.show_success_dialog(result_msg)

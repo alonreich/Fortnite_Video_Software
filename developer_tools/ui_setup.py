@@ -290,7 +290,6 @@ class Ui_CropApp:
         CropAppWindow.lower_button = QPushButton("Down One Level")
         CropAppWindow.lower_button.setToolTip("Send this item to the back so it sits behind others.")
         CropAppWindow.lower_button.setFixedWidth(UI_LAYOUT.BTN_WIDTH_LG)
-        
         portrait_footer_layout.addStretch()
         portrait_footer_layout.addWidget(CropAppWindow.lower_button)
         portrait_footer_layout.addWidget(CropAppWindow.delete_button)

@@ -40,14 +40,9 @@ class RecoveryManager:
         if not self.state_file.exists():
             self.logger.info("CRP: No state file found. Normal startup.")
             return False
-            
         if self.is_safe_mode_active():
             self.logger.warning(f"CRP: Safe Mode active for {self.app_id}. Bypassing recovery to prevent loop.")
             return False
-
-        # If the state file exists, it's a strong indicator of an unclean exit.
-        # We only return False if we can positively identify that the OLD process 
-        # is still running and is actually OUR app.
         if self.lock_file.exists():
             try:
                 with open(self.lock_file, "r") as f:
@@ -69,7 +64,6 @@ class RecoveryManager:
                                 self.logger.info(f"CRP: Could not inspect PID {old_pid}: {e}")
             except (ValueError, OSError) as e:
                 self.logger.info(f"CRP: Error reading lock file: {e}")
-
         self.logger.info("CRP: Fault detected! State file exists and no active process found.")
         return True
 

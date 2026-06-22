@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 import os
 sys.dont_write_bytecode = True
 os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
@@ -780,13 +780,12 @@ class UploadOverlay(QWidget):
         self.fade_direction = -1
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._update_pulse)
-        self.timer.start(100) # [ISSUE 7] Slower pulsing (100ms interval)
+        self.timer.start(100)
         self.hide()
 
     def _update_pulse(self):
-        # [ISSUE 7] Subtle, low-frequency transition (0.02 step)
         self.opacity += self.fade_direction * 0.02
-        if self.opacity <= 0.4: # Higher floor for better legibility
+        if self.opacity <= 0.4:
             self.opacity = 0.4
             self.fade_direction = 1
         elif self.opacity >= 1.0:
@@ -800,60 +799,41 @@ class UploadOverlay(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        
-        # Scale relative to current widget size
         scale = min(self.width() / 1780.0, self.height() / 898.0)
-        def s(val): return val * scale
 
+        def s(val): return val * scale
         painter.setOpacity(self.opacity)
         font = QFont("Sans Serif", int(max(12, s(32))), QFont.Bold)
         painter.setFont(font)
         fm = painter.fontMetrics()
-        
         max_text_width = s(500)
         text_rect = fm.boundingRect(QRect(0, 0, int(max_text_width), 1000), Qt.AlignCenter | Qt.TextWordWrap, self.text)
-        
         padding_h, padding_v = s(80), s(30)
         box_w, box_h = text_rect.width() + padding_h * 2, text_rect.height() + padding_v * 2
-        
-        # Center in the overlay (which covers video_frame)
         center_x, center_y = self.width() // 2, self.height() // 2
         rect = QRectF(center_x - box_w / 2, center_y - box_h / 2, box_w, box_h)
-        
         painter.setBrush(QBrush(QColor(0, 0, 0, 220)))
         painter.setPen(QPen(QColor("#7DD3FC"), max(1, s(3))))
         painter.drawRoundedRect(rect, s(20), s(20))
-        
         painter.setPen(QColor(Qt.white))
         painter.drawText(rect, Qt.AlignCenter | Qt.TextWordWrap, self.text)
-        
         if self.target_button and self.parentWidget():
-            # Map button center to this widget's coordinates
             btn_center = self.target_button.rect().center()
             btn_pos_global = self.target_button.mapToGlobal(btn_center)
             target_p = self.mapFromGlobal(btn_pos_global)
-            
-            # Start arrow from box bottom
             start_p = QPointF(rect.center().x(), rect.bottom() + s(10))
-            
-            # Draw standard UI arrow
             self._draw_pointer_arrow(painter, start_p, target_p, s)
 
     def _draw_pointer_arrow(self, painter, p1, p2, s_func):
         angle = math.atan2(p2.y() - p1.y(), p2.x() - p1.x())
         head_size = s_func(40)
         shaft_width = s_func(10)
-        
-        # Simple path-based arrow
         path = QPainterPath()
         path.moveTo(p1)
         path.lineTo(p2)
-        
         pen = QPen(QColor("#7DD3FC"), shaft_width, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
         painter.setPen(pen)
         painter.drawPath(path)
-        
-        # Arrow head
         head = QPainterPath()
         head.moveTo(p2)
         head.lineTo(p2.x() - head_size * math.cos(angle - math.pi/6),

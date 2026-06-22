@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import time
 import subprocess
@@ -512,7 +512,6 @@ class FfmpegMixin:
             if not success:
                 self._safe_status("Audio analysis failed.", "red")
                 return
-            
             self._safe_status("Video and audio analyzed.", "white")
             if mean < -25.0 or mean > -10.0:
                 recommended = -18.0 - mean

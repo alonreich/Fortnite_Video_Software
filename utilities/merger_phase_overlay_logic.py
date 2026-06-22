@@ -50,28 +50,19 @@ class MergerPhaseOverlayLogic:
             main_rect = parent.rect() if parent else self.rect()
             self._overlay.setGeometry(main_rect)
             self._overlay.raise_()
-            
             full_region = QRegion(self._overlay.rect())
             button_holes = QRegion()
-            
-            # Identify buttons that need to be "punched through" the overlay
             widgets_to_show = ["btn_merge", "btn_cancel", "btn_processing", "btn_back"]
             for w_name in widgets_to_show:
                 w = getattr(self, w_name, None)
                 if w and not w.isHidden():
                     try:
-                        # Direct global mapping is the most robust way to handle nested layouts
                         g_pos = w.mapToGlobal(QPoint(0, 0))
                         o_pos = self._overlay.mapFromGlobal(g_pos)
-                        
-                        # Use a generous 12px padding to ensure the full button + glow/border is visible
-                        # This resolves the clipping issue where edges were being cut off
                         mapped_rect = QRect(o_pos.x() - 12, o_pos.y() - 12, w.width() + 24, w.height() + 24)
                         button_holes |= QRegion(mapped_rect)
                         w.raise_()
                     except: pass
-            
-            # Apply the mask: only show the overlay where the buttons AREN'T
             self._overlay.setMask(full_region - button_holes)
             self._layout_overlay_panels(main_rect)
         except Exception:
@@ -139,15 +130,13 @@ class MergerPhaseOverlayLogic:
                 return
             self._pulse_phase = (getattr(self, "_pulse_phase", 0) + 1) % 40
             k = (math.sin(self._pulse_phase * 0.4) + 1) / 2.0
-            r1, g1, b1 = 30, 200, 100  # Green
-            r2, g2, b2 = 180, 255, 200 # Light Green
+            r1, g1, b1 = 30, 200, 100
+            r2, g2, b2 = 180, 255, 200
             r = int(r1 * k + r2 * (1 - k))
             g = int(g1 * k + g2 * (1 - k))
             b = int(b1 * k + b2 * (1 - k))
-            
             dots = "." * (self._pulse_phase % 4)
             current_text = f"PROCESSING{dots}"
-            
             self.btn_processing.setStyleSheet(f"""
                 QPushButton {{
                     background-color: rgb({r},{g},{b});

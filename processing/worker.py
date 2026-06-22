@@ -1,4 +1,4 @@
-import os
+﻿import os
 import tempfile
 import uuid
 import shutil
@@ -266,8 +266,8 @@ class ProcessThread(QThread):
                 self.logger.info(f"INTRO_FRAME_STATE: duration={intro_duration_sec:.3f}s input_index={intro_input_index} text_label={text_input_label}")
             audio_chains, final_a_label = self.filter_builder.build_audio_chain(music_cfg, self.start_time_ms/1000.0, self.end_time_ms/1000.0, self.speed_factor, self.disable_fades, 0.5 if not self.disable_fades else 0, "", 48000, self.music_tracks, 1, g_dur, volume_normalize_db=self.volume_normalize_db)
             core_path = os.path.normpath(os.path.join(self.temp_job_dir, "core.mp4"))
-
             last_error = "Render failed."
+
             def run_ffmpeg(use_cuda, requested_bitrate_kbps):
                 nonlocal last_error
                 current_encoder = self.encoder_mgr.get_initial_encoder() if use_cuda else 'libx264'
@@ -326,7 +326,6 @@ class ProcessThread(QThread):
                             if self.logger: self.logger.warning(f"FFmpeg failed with {current_encoder}, falling back to {fallbacks[0]}")
                             current_encoder = fallbacks[0]; continue
                     return False, g_dur, {}
-
             size_bounds = self._target_size_bounds()
             current_bitrate = int(video_bitrate_kbps) if video_bitrate_kbps else None
             for attempt in range(1, 3):

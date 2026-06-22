@@ -51,21 +51,19 @@ class MergerMusicWizardTimelineMixin:
             return False
 
         import mpv
+
         def _do_load(p, pt, ss):
             try:
                 if ss is None:
                     p.command("loadfile", pt, "replace")
                 else:
                     safe_start = max(0.0, float(ss or 0.0))
-                    # Use a comma-separated options string which is more standard for MPV loadfile
                     p.command("loadfile", pt, "replace", f"start={safe_start}")
                 return True
             except: return False
-
         if not hasattr(self, "_mpv_lock"):
             if getattr(player, '_core_shutdown', False): return False
             return _do_load(player, path, start_sec)
-        
         if not self._mpv_lock.acquire(timeout=0.05):
             return False
         try:

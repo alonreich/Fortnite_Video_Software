@@ -1,4 +1,4 @@
-import os
+﻿import os
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -151,7 +151,6 @@ class MainWindowFileAMixin:
                     self.playPauseButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
                 if hasattr(self, "timer") and not self.timer.isActive():
                     self.timer.start(50)
-
                 if hasattr(self, "apply_master_volume"):
                     self._suspend_volume_sync = False
                     self.apply_master_volume()

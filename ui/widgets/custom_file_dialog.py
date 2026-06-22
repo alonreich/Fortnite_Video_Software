@@ -1,4 +1,4 @@
-import subprocess
+﻿import subprocess
 import shutil
 import os
 import sys
@@ -54,6 +54,7 @@ from PyQt5.QtGui import (
     QPolygonF,
     QPixmap,
 )
+
 from PyQt5.QtSvg import QSvgRenderer
 
 class _CenteredTextDelegate(QStyledItemDelegate):
@@ -282,9 +283,11 @@ class CenterAlignedTreeView(QTreeView):
 
 class ClickableLabel(QLabel):
     clicked = pyqtSignal()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setCursor(Qt.PointingHandCursor)
+
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.clicked.emit()
@@ -303,8 +306,6 @@ class SVGSeekButton(QPushButton):
         self._hover = False
         self._pressed = False
         self.setStyleSheet("background: transparent; border: none;")
-        
-        # Load local SVG assets
         base_path = r"C:\Users\alon\Downloads"
         file_name = "f7--forward-fill.svg" if direction == "fwd" else "f7--backward-fill.svg"
         self.svg_path = os.path.join(base_path, file_name)
@@ -337,31 +338,24 @@ class SVGSeekButton(QPushButton):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        
-        # Define color based on state
+
         from developer_tools.config import UI_COLORS
         color_hex = UI_COLORS.PRIMARY
         if self._pressed:
             color_hex = UI_COLORS.PRIMARY_PRESSED
         elif self._hover:
             color_hex = UI_COLORS.BORDER_ACCENT
-        
         if self.renderer and self.renderer.isValid():
             from PyQt5.QtGui import QImage
-            # Use QImage for better transparency handling on top of native windows
             img = QImage(self.size(), QImage.Format_ARGB32)
             img.fill(Qt.transparent)
-            
             p = QPainter(img)
             svg_size = 24
             target_rect = QRect(int((self.width()-svg_size)/2), int((self.height()-svg_size)/2), svg_size, svg_size)
             self.renderer.render(p, QRectF(target_rect))
-            
-            # Apply color tint
             p.setCompositionMode(QPainter.CompositionMode_SourceIn)
             p.fillRect(img.rect(), QColor(color_hex))
             p.end()
-            
             painter.drawImage(0, 0, img)
         else:
             painter.setPen(Qt.NoPen)
@@ -717,36 +711,27 @@ class CustomFileDialog(QFileDialog):
         self._preview_status.setAlignment(Qt.AlignCenter)
         self._preview_status.setWordWrap(True)
         self._preview_status.clicked.connect(self._launch_default_player)
-        
-        # Bulletproof centering container
         self.seek_controls_widget = QWidget(self._preview_panel)
         self.seek_controls_widget.setAttribute(Qt.WA_TransparentForMouseEvents, False)
         self.seek_controls_widget.setAttribute(Qt.WA_TranslucentBackground)
         self.seek_controls_widget.setStyleSheet("background: transparent;")
         self.seek_controls_widget.hide()
-        
         seek_layout = QHBoxLayout(self.seek_controls_widget)
         seek_layout.setContentsMargins(0, 0, 0, 0)
         seek_layout.setSpacing(20)
-        
         self.btn_seek_back = SVGSeekButton(direction="back", parent=self.seek_controls_widget)
         self.btn_seek_fwd = SVGSeekButton(direction="fwd", parent=self.seek_controls_widget)
-        
         self.btn_seek_back.clicked.connect(lambda: self._seek_preview(-20))
         self.btn_seek_fwd.clicked.connect(lambda: self._seek_preview(20))
-        
         seek_layout.addStretch(1)
         seek_layout.addWidget(self.btn_seek_back)
         seek_layout.addWidget(self.btn_seek_fwd)
         seek_layout.addStretch(1)
-        
         preview_layout.addWidget(self._preview_title)
         preview_layout.addWidget(self._preview_video, 1)
         preview_layout.addWidget(self._preview_status)
-        
         self._preview_video.installEventFilter(self)
         QTimer.singleShot(100, self._position_seek_buttons)
-
         try:
             self._preview_video.show()
             self._preview_player = MPVSafetyManager.create_safe_mpv(
@@ -766,24 +751,19 @@ class CustomFileDialog(QFileDialog):
             if self._preview_player is not None:
                 MPVSafetyManager.safe_mpv_set(self._preview_player, "volume", 0)
                 MPVSafetyManager.safe_mpv_set(self._preview_player, "mute", True)
-
                 @self._preview_player.property_observer('idle-active')
                 def _on_idle_change(name, value):
-                    if value is True: # Player became idle (video finished)
+                    if value is True:
                         MPVSafetyManager.run_on_qt_thread(self._handle_eof_reset)
         except Exception as exc:
             self._preview_player = None
             self._preview_status.setText(f"Preview unavailable: {exc}")
-
-        # Find the splitter to add the preview panel to
         splitter = self.findChild(QSplitter, "splitter")
         if splitter:
             splitter.addWidget(self._preview_panel)
             splitter.setStretchFactor(0, 0)
             splitter.setStretchFactor(1, 3)
             splitter.setStretchFactor(2, 2)
-            
-            # Try to restore saved splitter state first
             restored = False
             if self.config:
                 splitter_state_b64 = self.config.config.get("file_dialog_splitter_state")
@@ -792,8 +772,6 @@ class CustomFileDialog(QFileDialog):
                         restored = splitter.restoreState(QByteArray.fromBase64(splitter_state_b64.encode()))
                     except Exception:
                         pass
-            
-            # If not restored, apply default sizes (e.g. 500px wide preview)
             if not restored:
                 w_total = self.width() if self.width() > 0 else 1400
                 splitter.setSizes([250, w_total - 250 - 500, 500])
@@ -807,14 +785,11 @@ class CustomFileDialog(QFileDialog):
         layout = self.layout()
         if not isinstance(layout, QGridLayout):
             return
-            
         file_name_label = self.findChild(QLabel, "fileNameLabel")
         file_name_edit = self.findChild(QLineEdit, "fileNameEdit")
         file_type_label = self.findChild(QLabel, "fileTypeLabel")
         file_type_combo = self.findChild(QComboBox, "fileTypeCombo")
         button_box = self.findChild(QWidget, "buttonBox")
-        
-        # Find open and cancel buttons from QPushButton children to style and layout them
         buttons = self.findChildren(QPushButton)
         open_button = None
         cancel_button = None
@@ -829,68 +804,40 @@ class CustomFileDialog(QFileDialog):
                 cancel_button = b
                 b.setObjectName("cancelButton")
                 b.setFixedSize(110, 32)
-        
         if all([file_name_label, file_name_edit, file_type_label, file_type_combo, button_box]):
-            # Remove from grid layout
             layout.removeWidget(file_name_label)
             layout.removeWidget(file_name_edit)
             layout.removeWidget(file_type_label)
             layout.removeWidget(file_type_combo)
             layout.removeWidget(button_box)
-            
-            # Replace default buttonBox layout with a tight custom QHBoxLayout to ensure
-            # both Open and Cancel buttons are displayed side-by-side without extra spacers
             temp_widget = QWidget()
             if button_box.layout():
                 temp_widget.setLayout(button_box.layout())
-                
             btn_layout = QHBoxLayout(button_box)
             btn_layout.setContentsMargins(0, 0, 0, 0)
             btn_layout.setSpacing(8)
             btn_layout.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            
             if open_button:
                 btn_layout.addWidget(open_button)
             if cancel_button:
                 btn_layout.addWidget(cancel_button)
-            
-            # Constrain buttonBox size tightly to match both 110px buttons and 8px spacing
             button_box.setFixedSize(228, 32)
-            
-            # Create horizontal layout for bottom inputs and button box container
             bottom_inputs_layout = QHBoxLayout()
             bottom_inputs_layout.setContentsMargins(0, 0, 0, 0)
             bottom_inputs_layout.setSpacing(8)
-            
-            # Set size policies
             file_name_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             file_type_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            
-            # Constrain File Name edit box width
             file_name_edit.setMinimumWidth(100)
             file_name_edit.setMaximumWidth(350)
-            
-            # Add inputs and buttonBox to the horizontal layout in the requested order:
-            # File name label -> File name edit -> buttonBox (Open + Cancel) -> File type label -> File type combo
             bottom_inputs_layout.addWidget(file_name_label)
             bottom_inputs_layout.addWidget(file_name_edit, 2)
             bottom_inputs_layout.addWidget(button_box)
             bottom_inputs_layout.addWidget(file_type_label)
             bottom_inputs_layout.addWidget(file_type_combo, 1)
-            
-            # Add bottom inputs layout to Row 2, Col 0, Span 1x3 (spanning all 3 columns)
             layout.addLayout(bottom_inputs_layout, 2, 0, 1, 3)
-            
-            # Set grid column stretch factors:
-            # Col 0 (lookInLabel / left side) -> 0 (do not stretch)
-            # Col 1 (lookInCombo and navigation buttons / middle) -> 1 (absorbs expansion)
-            # Col 2 (preview panel / right side) -> 0 (do not stretch extra)
             layout.setColumnStretch(0, 0)
             layout.setColumnStretch(1, 1)
             layout.setColumnStretch(2, 0)
-            
-            # Distribute stretches so the splitter row (Row 1) expands vertically
-            # and other rows remain compact.
             for r in range(layout.rowCount()):
                 if r == 1:
                     layout.setRowStretch(r, 1)
@@ -996,12 +943,10 @@ class CustomFileDialog(QFileDialog):
             self._preview_title.setText(os.path.basename(path))
         if self._preview_status is not None:
             self._preview_status.setText("Click To Preview")
-        
         if hasattr(self, 'seek_controls_widget'):
             self.seek_controls_widget.show()
             self.seek_controls_widget.raise_()
             self._position_seek_buttons()
-
         try:
             MPVSafetyManager.safe_mpv_set(self._preview_player, "pause", True)
             ok = MPVSafetyManager.safe_mpv_command(self._preview_player, "loadfile", path, "replace")
@@ -1040,44 +985,27 @@ class CustomFileDialog(QFileDialog):
     def _position_seek_buttons(self):
         if not hasattr(self, 'seek_controls_widget') or not self.seek_controls_widget:
             return
-
         v_rect = self._preview_video.geometry()
-
-        # Calculate actual video height inside the frame (Assuming 16:9 aspect ratio)
         container_w = v_rect.width()
         container_h = v_rect.height()
-
-        # mpv letterboxes content. We need to find the bottom of the visible video.
         target_ratio = 16.0 / 9.0
         actual_video_h = container_w / target_ratio
-
         if actual_video_h > container_h:
-            # Video is taller than container (pillarboxed)
             actual_video_h = container_h
             y_offset = 0
         else:
-            # Video is wider than container (letterboxed)
             y_offset = (container_h - actual_video_h) / 2
-
-        # Container spans the width of the video area
         self.seek_controls_widget.setFixedWidth(container_w)
-        self.seek_controls_widget.setFixedHeight(40) # Room for buttons
-        
-        # Anchor exactly 5px BELOW the active video content
-        # We move the container to (video_x, video_y + y_offset + footage_h + 5)
+        self.seek_controls_widget.setFixedHeight(40)
         y = v_rect.y() + y_offset + actual_video_h + 5
-        
-        # Safety clamp
         y_max = v_rect.y() + container_h - 40 - 5
         y = min(y, y_max)
-        
         self.seek_controls_widget.move(v_rect.x(), int(y))
         self.seek_controls_widget.raise_()
 
     def eventFilter(self, obj, event):
         if obj == getattr(self, "_preview_video", None) and event.type() == QEvent.Resize:
             self._position_seek_buttons()
-            
         if event.type() == QEvent.ContextMenu:
             view = obj
             if not isinstance(obj, (QTreeView, QListView)):
@@ -1354,7 +1282,6 @@ class CustomFileDialog(QFileDialog):
             look_in_combobox.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
             look_in_combobox.currentTextChanged.connect(self._adjust_lookin_width)
             self._adjust_lookin_width()
-            
         layout = self.layout()
         if isinstance(layout, QGridLayout):
             for i in range(layout.count()):
@@ -1434,11 +1361,9 @@ class CustomFileDialog(QFileDialog):
         if not self.config:
             return
         self.config.config["file_dialog_geometry"] = (self.saveGeometry().toBase64().data().decode())
-        
         splitter = self.findChild(QSplitter, "splitter")
         if splitter:
             self.config.config["file_dialog_splitter_state"] = (splitter.saveState().toBase64().data().decode())
-            
         if self.tree_view:
             header = self.tree_view.header()
             self.config.config["file_dialog_header_state"] = (header.saveState().toBase64().data().decode())
@@ -1484,9 +1409,9 @@ class CustomFileDialog(QFileDialog):
         from PyQt5.QtWidgets import QHeaderView
         header.setSectionResizeMode(QHeaderView.Interactive)
         header.setStretchLastSection(False)
-        header.resizeSection(0, 330) # Name
-        header.resizeSection(1, 95)  # Size
-        header.resizeSection(3, 180) # Date Modified
+        header.resizeSection(0, 330)
+        header.resizeSection(1, 95)
+        header.resizeSection(3, 180)
         header.setSectionHidden(2, True)
 
     def selectedFiles(self):

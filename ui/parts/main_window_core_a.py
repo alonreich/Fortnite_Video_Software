@@ -38,7 +38,6 @@ class MainWindowCoreAMixin:
             self.granular_button.setToolTip("Open the detailed speed editor to add variable speeds or freeze frames")
 
     def _handle_granular_click(self):
-        # Always open the granular speed editor dialog to allow editing or adding segments.
         self.open_granular_speed_dialog()
 
     def open_granular_speed_dialog(self):

@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (
+﻿from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QSizePolicy
 )
 
@@ -50,7 +50,7 @@ class MergerUIBuildMixin(MergerUIWidgetsMixin):
         self.parent.status_label.setAlignment(Qt.AlignCenter)
         outer.addWidget(self.parent.status_label, 0)
         outer.addWidget(merge_row, 0)
-        outer.addSpacing(35) # Leave room for the overlay progress bar at the very bottom
+        outer.addSpacing(35)
 
     def create_move_buttons(self):
         col = QVBoxLayout()

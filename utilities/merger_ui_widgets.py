@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (
+﻿from PyQt5.QtWidgets import (
     QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSizePolicy, QWidget
 )
 
@@ -58,19 +58,16 @@ class MergerUIWidgetsMixin:
         self.parent.merge_row = QHBoxLayout()
         self.parent.merge_row.setContentsMargins(0, 0, 0, 0)
         self.parent.merge_row.setSpacing(20)
-        
         merge_wrap = QWidget()
         merge_wrap.setLayout(self.parent.merge_row)
         merge_wrap.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
-        
         self.parent.btn_merge = QPushButton("MERGE VIDEOS")
         self.parent.btn_merge.setObjectName("mergeButton")
         self.parent.btn_merge.setFixedSize(210, 42)
         self.parent.btn_merge.setCursor(Qt.PointingHandCursor)
         self.parent.btn_merge.clicked.connect(self.parent.on_merge_clicked)
         self.parent.btn_merge.setToolTip("Start merging the video list (Ctrl+Enter)")
-        
-        # Dual-button cluster matching Main App
+
         from ui.styles import UIStyles
         self.parent.btn_cancel = QPushButton("CANCEL")
         self.parent.btn_cancel.setFixedSize(140, 42)
@@ -78,13 +75,11 @@ class MergerUIWidgetsMixin:
         self.parent.btn_cancel.setStyleSheet(UIStyles.BUTTON_CANCEL)
         self.parent.btn_cancel.clicked.connect(self.parent.cancel_processing)
         self.parent.btn_cancel.hide()
- 
         self.parent.btn_processing = QPushButton("PROCESSING")
         self.parent.btn_processing.setFixedSize(140, 42)
         self.parent.btn_processing.setCursor(Qt.PointingHandCursor)
         self.parent.btn_processing.setStyleSheet(UIStyles.BUTTON_WIZARD_GREEN)
         self.parent.btn_processing.hide()
- 
         self.parent.merge_row.addStretch(1)
         self.parent.merge_row.addWidget(self.parent.btn_merge)
         self.parent.merge_row.addWidget(self.parent.btn_cancel)

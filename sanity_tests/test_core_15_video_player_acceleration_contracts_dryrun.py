@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from sanity_tests._ai_sanity_helpers import assert_all_present, read_source
 
 def test_core_15_main_app_player_acceleration_contracts_dryrun() -> None:
@@ -34,9 +34,9 @@ def test_core_15_main_app_player_acceleration_contracts_dryrun() -> None:
     assert_all_present(
         main_wizard_src,
         [
-            "kwargs = {'osc': False, 'hr_seek': 'yes', 'hwdec': 'auto'",
-            "kwargs['vo'] = 'gpu'; kwargs['gpu-context'] = 'd3d11'",
-            "self.mpv_instance = mpv.MPV(**kwargs)",
+            "self.mpv_instance = MPVSafetyManager.create_safe_mpv(",
+            "hwdec='auto'",
+            "vo='gpu' if sys.platform == 'win32' else 'gpu'",
             "self._wizard_music_player = MPVSafetyManager.create_safe_mpv",
         ],
     )
@@ -56,9 +56,9 @@ def test_core_15_crop_and_merger_step3_acceleration_contracts_dryrun() -> None:
     assert_all_present(
         merger_wizard_src,
         [
-            "'hwdec': 'auto'",
-            "kwargs['vo'] = 'gpu'",
-            "kwargs['gpu-context'] = 'd3d11'",
-            "self._video_player = self._wizard_video_player",
+            "self.mpv_instance = MPVSafetyManager.create_safe_mpv(",
+            "hwdec='auto'",
+            "vo='gpu' if sys.platform == 'win32' else 'gpu'",
+            "self._wizard_music_player = MPVSafetyManager.create_safe_mpv",
         ],
     )
